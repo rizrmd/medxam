@@ -42,7 +42,7 @@ export function ScoringDetails() {
   const scoringData = [
     {
       id: 'score_1',
-      candidateCode: 'REG00001',
+      participantCode: 'REG00001',
       progress: 100,
       attemptedAt: '2025-08-02 14:30:00',
       scoringStatus: 'completed',
@@ -99,7 +99,6 @@ export function ScoringDetails() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">Scoring Detail - IoNbEc</h1>
             <p className="text-muted-foreground">{delivery.name}</p>
           </div>
         </div>
@@ -147,7 +146,7 @@ export function ScoringDetails() {
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-mono text-sm">{item.candidateCode}</p>
+                      <p className="font-mono text-sm">{item.participantCode}</p>
                       <p className="text-xs text-muted-foreground">{item.email}</p>
                     </div>
                   </TableCell>

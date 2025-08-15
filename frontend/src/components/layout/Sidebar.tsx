@@ -14,15 +14,20 @@ import {
   User,
   Shield,
   Menu,
-  X
+  X,
+  ClipboardCheck,
+  Award
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useLocalState } from '@/hooks/useLocalState'
+import { useAuthStore } from '@/store/authStore'
 
-const menuSections = [
+// Full admin menu
+const adminMenuSections = [
   {
     items: [
       { name: 'Dashboard', path: '/back-office/dashboard', icon: LayoutDashboard },
+      { name: 'Assignment Overview', path: '/back-office/assignments', icon: UserCheck },
       { name: 'Deliveries', path: '/back-office/delivery', icon: Package },
       { name: 'Exams', path: '/back-office/test', icon: FileText },
       { name: 'Groups', path: '/back-office/group', icon: Users },
@@ -34,7 +39,7 @@ const menuSections = [
       { name: 'Categories', path: '/back-office/category', icon: Tags },
       { name: 'Question Sets', path: '/back-office/question-set', icon: FileQuestion },
       { name: 'Search Questions', path: '/back-office/question-pack', icon: Search },
-      { name: 'Candidates', path: '/back-office/test-taker', icon: UserCheck },
+      { name: 'Participants', path: '/back-office/participants', icon: UserCheck },
     ]
   },
   {
@@ -49,6 +54,30 @@ const menuSections = [
     items: [
       { name: 'My Profile', path: '/back-office/profile', icon: User },
       { name: 'Users & Access', path: '/back-office/user', icon: Shield },
+      { name: 'Committee & Scorers', path: '/back-office/committee-scorers', icon: UserCheck },
+    ]
+  }
+]
+
+// Committee/Scorer menu (limited access)
+const committeeMenuSections = [
+  {
+    items: [
+      { name: 'Dashboard', path: '/back-office/dashboard', icon: LayoutDashboard },
+      { name: 'My Deliveries', path: '/committee/deliveries', icon: ClipboardCheck },
+    ]
+  },
+  {
+    label: 'Scoring',
+    items: [
+      { name: 'Active Scoring', path: '/back-office/scoring', icon: Award },
+      { name: 'Results Review', path: '/back-office/result', icon: ChartBar },
+    ]
+  },
+  {
+    label: 'Settings',
+    items: [
+      { name: 'My Profile', path: '/back-office/profile', icon: User },
     ]
   }
 ]
@@ -56,6 +85,22 @@ const menuSections = [
 export function Sidebar() {
   const location = useLocation()
   const [state, setState] = useLocalState({ isOpen: false })
+  const { user } = useAuthStore()
+  
+  // Determine which menu to show based on user roles
+  const hasAdminRole = user?.roles?.some(role => 
+    role.name === 'Administrator' || role.name === 'administrator'
+  )
+  
+  const hasCommitteeRole = user?.roles?.some(role => 
+    role.name === 'Scorer / Committee' || role.name === 'scorer' || role.name === 'committee'
+  )
+  
+  // Select appropriate menu sections
+  // Admin role takes precedence
+  const menuSections = hasAdminRole ? adminMenuSections : 
+                       hasCommitteeRole ? committeeMenuSections : 
+                       adminMenuSections // Default to admin menu if no specific role
 
   return (
     <>
@@ -88,7 +133,7 @@ export function Sidebar() {
         <div className="flex h-full flex-col">
           {/* Header */}
           <div className="flex h-16 items-center border-b px-6">
-            <h2 className="text-xl font-bold">IoNbEc Admin</h2>
+            <h2 className="text-xl font-bold">MedXam Admin</h2>
           </div>
 
           {/* Navigation */}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '@/lib/api'
-import { DateFilterValue } from '@/components/ui/date-filter'
+import type { DateFilterValue } from '@/components/ui/date-filter'
 
 export interface ListState<T> {
   items: T[]
@@ -130,7 +130,7 @@ export function useListManagement<T = any>(
       const response = await apiClient.get(`${config.endpoint}?${params.toString()}`)
       
       if (response.error) {
-        setState(prev => ({ ...prev, error: response.error, loading: false }))
+        setState(prev => ({ ...prev, error: response.error || null, loading: false }))
       } else if ((response as any).data) {
         const data = (response as any).data
         setState(prev => ({

@@ -30,6 +30,7 @@ import { Tags, Edit, Trash2, Plus, Search } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useLocalStateSync } from '@/hooks/useLocalState'
 import { useFastInput } from '@/hooks/useFastInput'
+import { useHeaderActions } from '@/hooks/useHeaderActions'
 import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
 
@@ -150,21 +151,20 @@ export function QuestionCategories() {
     return labels[type] || type
   }
 
+  const headerActions = (
+    <Button>
+      <Plus className="h-4 w-4 mr-2" />
+      Category
+    </Button>
+  )
+  
+  useHeaderActions(headerActions)
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Manage Categories - IoNbEc</h1>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Category
-        </Button>
-      </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Search & Filter</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <form onSubmit={handleSearch} className="flex gap-4">
             <Input
               placeholder="Search Name"

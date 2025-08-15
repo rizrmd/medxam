@@ -3,11 +3,19 @@ import { devtools } from 'valtio/utils'
 import { apiClient } from '@/lib/api'
 
 // Auth Types
+interface Role {
+  id: number
+  name: string
+  display_name?: string
+  description?: string
+}
+
 interface User {
-  id: string
+  id: string | number
   username: string
   email: string
-  role: 'administrator' | 'scorer'
+  role?: 'administrator' | 'scorer' // Keep for backward compatibility
+  roles?: Role[] // Array of roles from backend
   name: string
 }
 
@@ -66,7 +74,7 @@ export interface Group {
   createdAt: Date
 }
 
-export interface Candidate {
+export interface Participant {
   id: string
   registrationNumber: string
   name: string
@@ -78,7 +86,7 @@ export interface Candidate {
 
 export interface Result {
   id: string
-  candidateId: string
+  participantId: string
   deliveryId: string
   score: number
   totalScore: number
@@ -109,10 +117,10 @@ export const store = proxy({
   // Participant State
   participant: {
     groups: [] as Group[],
-    candidates: [] as Candidate[],
+    participants: [] as Participant[],
     results: [] as Result[],
     currentGroup: null as Group | null,
-    currentCandidate: null as Candidate | null,
+    currentParticipant: null as Participant | null,
   },
 })
 
@@ -138,13 +146,30 @@ export const authActions = {
           throw new Error('Login failed')
         }
         
+        // Store initial user data
         store.auth.user = user
         store.auth.token = session_id || null
         store.auth.isAuthenticated = true
         
         if (session_id) {
           localStorage.setItem('sessionId', session_id)
-          document.cookie = `ionbec_session=${session_id}; path=/; max-age=86400; SameSite=Lax`
+          document.cookie = `medxam_session=${session_id}; path=/; max-age=86400; SameSite=Lax`
+        }
+        
+        // Fetch complete user data with roles from /auth/me
+        try {
+          const meResponse = await apiClient.auth.me()
+          if (!meResponse.error && meResponse.data) {
+            const { user: fullUser, session_data } = meResponse.data as any
+            
+            // Merge user data with roles from session_data
+            if (fullUser && session_data?.roles) {
+              fullUser.roles = session_data.roles
+              store.auth.user = fullUser
+            }
+          }
+        } catch (meError) {
+          console.warn('Failed to fetch user roles:', meError)
         }
       }
     } catch (error) {
@@ -164,34 +189,43 @@ export const authActions = {
       store.auth.isAuthenticated = false
       
       localStorage.removeItem('sessionId')
-      document.cookie = 'ionbec_session=; path=/; max-age=0; SameSite=Lax'
+      document.cookie = 'medxam_session=; path=/; max-age=0; SameSite=Lax'
     }
   },
 
   setUser(user: User) {
     store.auth.user = user
   },
-
+  
   async checkAuth() {
+    const sessionId = localStorage.getItem('sessionId')
+    if (!sessionId) {
+      store.auth.isAuthenticated = false
+      return
+    }
+    
     try {
       const response = await apiClient.auth.me()
-      
-      if (response.error) {
+      if (!response.error && response.data) {
+        const { user, session_data } = response.data as any
+        
+        // Merge user data with roles from session_data
+        if (user && session_data?.roles) {
+          user.roles = session_data.roles
+        }
+        
+        store.auth.user = user
+        store.auth.token = sessionId
+        store.auth.isAuthenticated = true
+      } else {
+        // Session invalid, clear auth
         store.auth.user = null
         store.auth.token = null
         store.auth.isAuthenticated = false
-        return
-      }
-      
-      if (response.data) {
-        const { user } = response.data as any
-        store.auth.user = user
-        store.auth.isAuthenticated = true
+        localStorage.removeItem('sessionId')
       }
     } catch (error) {
       console.error('Auth check failed:', error)
-      store.auth.user = null
-      store.auth.token = null
       store.auth.isAuthenticated = false
     }
   },
@@ -290,8 +324,8 @@ export const participantActions = {
     store.participant.groups = groups
   },
 
-  setCandidates(candidates: Candidate[]) {
-    store.participant.candidates = candidates
+  setParticipants(participants: Participant[]) {
+    store.participant.participants = participants
   },
 
   setResults(results: Result[]) {
@@ -302,8 +336,8 @@ export const participantActions = {
     store.participant.currentGroup = group
   },
 
-  setCurrentCandidate(candidate: Candidate | null) {
-    store.participant.currentCandidate = candidate
+  setCurrentParticipant(participant: Participant | null) {
+    store.participant.currentParticipant = participant
   },
 
   addGroup(group: Group) {
@@ -321,19 +355,19 @@ export const participantActions = {
     store.participant.groups = store.participant.groups.filter(g => g.id !== id)
   },
 
-  addCandidate(candidate: Candidate) {
-    store.participant.candidates.push(candidate)
+  addParticipant(participant: Participant) {
+    store.participant.participants.push(participant)
   },
 
-  updateCandidate(id: string, candidateUpdate: Partial<Candidate>) {
-    const index = store.participant.candidates.findIndex(c => c.id === id)
+  updateParticipant(id: string, participantUpdate: Partial<Participant>) {
+    const index = store.participant.participants.findIndex(c => c.id === id)
     if (index !== -1) {
-      Object.assign(store.participant.candidates[index], candidateUpdate)
+      Object.assign(store.participant.participants[index], participantUpdate)
     }
   },
 
-  deleteCandidate(id: string) {
-    store.participant.candidates = store.participant.candidates.filter(c => c.id !== id)
+  deleteParticipant(id: string) {
+    store.participant.participants = store.participant.participants.filter(c => c.id !== id)
   },
 
   addResult(result: Result) {

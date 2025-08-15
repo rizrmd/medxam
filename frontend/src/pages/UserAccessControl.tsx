@@ -43,7 +43,7 @@ export function UserAccessControl() {
     const mockUsers: User[] = Array.from({ length: 60 }, (_, i) => ({
       id: `user_${i + 1}`,
       name: `User ${i + 1}`,
-      email: `user${i + 1}@ionbec.com`,
+      email: `user${i + 1}@medxam.com`,
       role: i % 3 === 0 ? 'administrator' : 'scorer',
       status: i % 10 === 0 ? 'inactive' : 'active',
       lastLogin: new Date(2025, 7, (i % 30) + 1),
@@ -83,7 +83,6 @@ export function UserAccessControl() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Manage User - IoNbEc</h1>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
           User

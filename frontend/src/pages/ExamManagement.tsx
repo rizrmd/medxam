@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -18,6 +18,7 @@ import { useLocalStateSync } from '@/hooks/useLocalState'
 import { useFastInput } from '@/hooks/useFastInput'
 import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
+import { useHeaderActions } from '@/hooks/useHeaderActions'
 
 export function ExamManagement() {
   const searchCodeInput = useFastInput('')
@@ -141,21 +142,20 @@ export function ExamManagement() {
     return <ErrorMessage error={state.error} onRetry={fetchExams} />
   }
 
+  const headerActions = (
+    <Button onClick={() => setState.showCreateForm = true}>
+      <Plus className="h-4 w-4 mr-2" />
+      Exam
+    </Button>
+  )
+  
+  useHeaderActions(headerActions)
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Manage Exams - IoNbEc</h1>
-        <Button onClick={() => setState.showCreateForm = true}>
-          <Plus className="h-4 w-4 mr-2" />
-          Exam
-        </Button>
-      </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Search & Filter</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <form onSubmit={handleSearch} className="flex gap-4">
             <Input
               placeholder="Search code"

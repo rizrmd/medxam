@@ -25,6 +25,7 @@ import { useNavigate } from 'react-router-dom'
 import { apiClient } from '@/lib/api'
 import { useLocalStateSync } from '@/hooks/useLocalState'
 import { useFastInput } from '@/hooks/useFastInput'
+import { useHeaderActions } from '@/hooks/useHeaderActions'
 import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
 
@@ -135,21 +136,20 @@ export function GroupManagement() {
     group.description.toLowerCase().includes(searchInput.getValue().toLowerCase())
   )
 
+  const headerActions = (
+    <Button>
+      <Plus className="h-4 w-4 mr-2" />
+      Group
+    </Button>
+  )
+  
+  useHeaderActions(headerActions)
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Manage Groups - IoNbEc</h1>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Group
-        </Button>
-      </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Search & Filter</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <form onSubmit={handleSearch} className="flex gap-4">
             <Input
               placeholder="Search group name or description"
@@ -201,7 +201,7 @@ export function GroupManagement() {
                       <Button 
                         variant="ghost" 
                         size="icon"
-                        onClick={() => navigate(`/back-office/group/${group.id}/takers`)}
+                        onClick={() => navigate(`/back-office/group/${group.id}/participants`)}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>

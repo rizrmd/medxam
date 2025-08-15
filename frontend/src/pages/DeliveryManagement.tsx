@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -19,7 +19,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Calendar, Clock, Edit, Trash2, Plus, Search, Eye } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Calendar, Clock, Edit, Trash2, Plus, Search, Eye, Play, Timer } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { formatLongDate, formatDateForInput } from '@/lib/date-utils'
 import { useLocalStateSync } from '@/hooks/useLocalState'
@@ -29,15 +30,17 @@ import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
 import { DateFilterAdvanced, getDateFilterRange } from '@/components/ui/date-filter-advanced'
 import type { DateFilterValue } from '@/components/ui/date-filter-advanced'
+import { useHeaderActions } from '@/hooks/useHeaderActions'
 
 interface DeliveryFormData {
   name: string
   exam_id: number
   group_id: number
-  start_date: string
-  end_date: string
+  scheduled_at: string
   duration: number
-  status: string
+  automatic_start: boolean
+  is_anytime: boolean
+  display_name: string
 }
 
 export function DeliveryManagement() {
@@ -60,10 +63,11 @@ export function DeliveryManagement() {
       name: '',
       exam_id: 0,
       group_id: 0,
-      start_date: '',
-      end_date: '',
+      scheduled_at: '',
       duration: 120,
-      status: 'scheduled'
+      automatic_start: true,
+      is_anytime: false,
+      display_name: ''
     } as DeliveryFormData
   })
   const navigate = useNavigate()
@@ -171,10 +175,11 @@ export function DeliveryManagement() {
           name: '',
           exam_id: 0,
           group_id: 0,
-          start_date: '',
-          end_date: '',
+          scheduled_at: '',
           duration: 120,
-          status: 'scheduled'
+          automatic_start: true,
+          is_anytime: false,
+          display_name: ''
         }
       }
     } catch (err) {
@@ -222,10 +227,11 @@ export function DeliveryManagement() {
       name: delivery.name || '',
       exam_id: delivery.exam_id || 0,
       group_id: delivery.group_id || 0,
-      start_date: formatDateForInput(delivery.scheduled_at || delivery.start_date),
-      end_date: formatDateForInput(delivery.end_date),
+      scheduled_at: formatDateForInput(delivery.scheduled_at),
       duration: delivery.duration || 120,
-      status: delivery.status || 'scheduled'
+      automatic_start: delivery.automatic_start !== false,
+      is_anytime: delivery.is_anytime || false,
+      display_name: delivery.display_name || ''
     }
     setState.showEditDialog = true
   }
@@ -321,21 +327,20 @@ export function DeliveryManagement() {
     return <ErrorMessage error={state.error} onRetry={fetchDeliveries} />
   }
 
+  const headerActions = (
+    <Button onClick={() => setState.showCreateDialog = true}>
+      <Plus className="h-4 w-4 mr-2" />
+      Delivery
+    </Button>
+  )
+  
+  useHeaderActions(headerActions)
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Manage Deliveries - IoNbEc</h1>
-        <Button onClick={() => setState.showCreateDialog = true}>
-          <Plus className="h-4 w-4 mr-2" />
-          Delivery
-        </Button>
-      </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Search & Filter</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <form onSubmit={handleSearch} className="flex gap-4">
             <div className="flex-1">
               <Input
@@ -373,6 +378,7 @@ export function DeliveryManagement() {
                 <TableHead>DELIVERY NAME</TableHead>
                 <TableHead>SCHEDULE</TableHead>
                 <TableHead>DURATION</TableHead>
+                <TableHead>START TYPE</TableHead>
                 <TableHead>STATUS</TableHead>
                 <TableHead>Action</TableHead>
               </TableRow>
@@ -402,6 +408,21 @@ export function DeliveryManagement() {
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-muted-foreground" />
                         {delivery.duration || 0} minutes
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {delivery.automatic_start ? (
+                          <>
+                            <Timer className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-600">Automatic</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4 text-orange-600" />
+                            <span className="text-sm font-medium text-orange-600">Manual</span>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -444,7 +465,7 @@ export function DeliveryManagement() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     No deliveries found
                   </TableCell>
                 </TableRow>
@@ -479,26 +500,14 @@ export function DeliveryManagement() {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="start_date" className="text-right">
-                Start Date
+              <Label htmlFor="scheduled_at" className="text-right">
+                Schedule Date
               </Label>
               <Input
-                id="start_date"
+                id="scheduled_at"
                 type="datetime-local"
-                value={state.formData.start_date}
-                onChange={(e) => setState.formData = {...state.formData, start_date: e.target.value}}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="end_date" className="text-right">
-                End Date
-              </Label>
-              <Input
-                id="end_date"
-                type="datetime-local"
-                value={state.formData.end_date}
-                onChange={(e) => setState.formData = {...state.formData, end_date: e.target.value}}
+                value={state.formData.scheduled_at}
+                onChange={(e) => setState.formData = {...state.formData, scheduled_at: e.target.value}}
                 className="col-span-3"
               />
             </div>
@@ -513,6 +522,39 @@ export function DeliveryManagement() {
                 onChange={(e) => setState.formData = {...state.formData, duration: parseInt(e.target.value) || 0}}
                 className="col-span-3"
               />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">
+                Start Type
+              </Label>
+              <div className="col-span-3 flex items-center space-x-2">
+                <Checkbox
+                  id="automatic_start"
+                  checked={state.formData.automatic_start}
+                  onCheckedChange={(checked) => setState.formData = {...state.formData, automatic_start: checked as boolean}}
+                />
+                <Label
+                  htmlFor="automatic_start"
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  Strict Schedule (Auto-start at scheduled time)
+                </Label>
+              </div>
+            </div>
+            <div className="col-span-4 px-4">
+              <p className="text-sm text-muted-foreground">
+                {state.formData.automatic_start ? (
+                  <span className="flex items-center gap-2">
+                    <Timer className="h-4 w-4" />
+                    The exam will start automatically when the scheduled time is reached.
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Play className="h-4 w-4" />
+                    The exam will require manual start by an admin/committee member.
+                  </span>
+                )}
+              </p>
             </div>
           </div>
           <DialogFooter>
@@ -546,26 +588,14 @@ export function DeliveryManagement() {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-start_date" className="text-right">
-                Start Date
+              <Label htmlFor="edit-scheduled_at" className="text-right">
+                Schedule Date
               </Label>
               <Input
-                id="edit-start_date"
+                id="edit-scheduled_at"
                 type="datetime-local"
-                value={state.formData.start_date}
-                onChange={(e) => setState.formData = {...state.formData, start_date: e.target.value}}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-end_date" className="text-right">
-                End Date
-              </Label>
-              <Input
-                id="edit-end_date"
-                type="datetime-local"
-                value={state.formData.end_date}
-                onChange={(e) => setState.formData = {...state.formData, end_date: e.target.value}}
+                value={state.formData.scheduled_at}
+                onChange={(e) => setState.formData = {...state.formData, scheduled_at: e.target.value}}
                 className="col-span-3"
               />
             </div>
@@ -580,6 +610,39 @@ export function DeliveryManagement() {
                 onChange={(e) => setState.formData = {...state.formData, duration: parseInt(e.target.value) || 0}}
                 className="col-span-3"
               />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">
+                Start Type
+              </Label>
+              <div className="col-span-3 flex items-center space-x-2">
+                <Checkbox
+                  id="edit-automatic_start"
+                  checked={state.formData.automatic_start}
+                  onCheckedChange={(checked) => setState.formData = {...state.formData, automatic_start: checked as boolean}}
+                />
+                <Label
+                  htmlFor="edit-automatic_start"
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  Strict Schedule (Auto-start at scheduled time)
+                </Label>
+              </div>
+            </div>
+            <div className="col-span-4 px-4">
+              <p className="text-sm text-muted-foreground">
+                {state.formData.automatic_start ? (
+                  <span className="flex items-center gap-2">
+                    <Timer className="h-4 w-4" />
+                    The exam will start automatically when the scheduled time is reached.
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Play className="h-4 w-4" />
+                    The exam will require manual start by an admin/committee member.
+                  </span>
+                )}
+              </p>
             </div>
           </div>
           <DialogFooter>

@@ -37,7 +37,6 @@ export function ResultsManagement() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Result of Groups - IoNbEc</h1>
       </div>
 
       <Card>

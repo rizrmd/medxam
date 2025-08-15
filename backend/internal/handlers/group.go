@@ -4,17 +4,18 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/medxamion/medxamion/internal/models"
+	"github.com/medxamion/medxamion/internal/tables"
+
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/medxamion/medxamion/internal/middleware"
-	"github.com/medxamion/medxamion/internal/models"
-	"github.com/medxamion/medxamion/internal/repository"
 )
 
 type GroupHandler struct {
-	groupRepo *repository.GroupRepository
+	groupRepo *models.GroupModel
 }
 
-func NewGroupHandler(groupRepo *repository.GroupRepository) *GroupHandler {
+func NewGroupHandler(groupRepo *models.GroupModel) *GroupHandler {
 	return &GroupHandler{groupRepo: groupRepo}
 }
 
@@ -108,7 +109,7 @@ type ListGroupsInput struct {
 }
 
 type ListGroupsOutput struct {
-	Body models.PaginatedResponse `json:"body"`
+	Body tables.PaginatedResponse `json:"body"`
 }
 
 func (h *GroupHandler) ListGroups(ctx context.Context, input *ListGroupsInput) (*ListGroupsOutput, error) {
@@ -117,7 +118,7 @@ func (h *GroupHandler) ListGroups(ctx context.Context, input *ListGroupsInput) (
 		return nil, huma.Error401Unauthorized("Authentication required")
 	}
 
-	pagination := models.Pagination{
+	pagination := tables.Pagination{
 		Page:    input.Page,
 		PerPage: input.PerPage,
 	}
@@ -136,7 +137,7 @@ type GetGroupInput struct {
 }
 
 type GetGroupOutput struct {
-	Body *models.Group `json:"body"`
+	Body *tables.Group `json:"body"`
 }
 
 func (h *GroupHandler) GetGroup(ctx context.Context, input *GetGroupInput) (*GetGroupOutput, error) {
@@ -155,14 +156,14 @@ func (h *GroupHandler) GetGroup(ctx context.Context, input *GetGroupInput) (*Get
 
 // Create Group
 type CreateGroupInput struct {
-	Body models.GroupCreateRequest `json:"body"`
+	Body tables.GroupCreateRequest `json:"body"`
 }
 
 type CreateGroupOutput struct {
 	Body struct {
 		Success bool          `json:"success"`
 		Message string        `json:"message"`
-		Group   *models.Group `json:"group,omitempty"`
+		Group   *tables.Group `json:"group,omitempty"`
 	} `json:"body"`
 }
 
@@ -184,7 +185,7 @@ func (h *GroupHandler) CreateGroup(ctx context.Context, input *CreateGroupInput)
 		return nil, huma.Error403Forbidden("Admin role required")
 	}
 
-	group := &models.Group{
+	group := &tables.Group{
 		Name:          input.Body.Name,
 		Description:   input.Body.Description,
 		Code:          input.Body.Code,
@@ -201,7 +202,7 @@ func (h *GroupHandler) CreateGroup(ctx context.Context, input *CreateGroupInput)
 		Body: struct {
 			Success bool          `json:"success"`
 			Message string        `json:"message"`
-			Group   *models.Group `json:"group,omitempty"`
+			Group   *tables.Group `json:"group,omitempty"`
 		}{
 			Success: true,
 			Message: "Group created successfully",
@@ -212,15 +213,15 @@ func (h *GroupHandler) CreateGroup(ctx context.Context, input *CreateGroupInput)
 
 // Update Group
 type UpdateGroupInput struct {
-	ID   int                      `path:"id" minimum:"1"`
-	Body models.GroupUpdateRequest `json:"body"`
+	ID   int                       `path:"id" minimum:"1"`
+	Body tables.GroupUpdateRequest `json:"body"`
 }
 
 type UpdateGroupOutput struct {
 	Body struct {
 		Success bool          `json:"success"`
 		Message string        `json:"message"`
-		Group   *models.Group `json:"group,omitempty"`
+		Group   *tables.Group `json:"group,omitempty"`
 	} `json:"body"`
 }
 
@@ -251,7 +252,7 @@ func (h *GroupHandler) UpdateGroup(ctx context.Context, input *UpdateGroupInput)
 		Body: struct {
 			Success bool          `json:"success"`
 			Message string        `json:"message"`
-			Group   *models.Group `json:"group,omitempty"`
+			Group   *tables.Group `json:"group,omitempty"`
 		}{
 			Success: true,
 			Message: "Group updated successfully",
@@ -314,7 +315,7 @@ type GetGroupTakersInput struct {
 }
 
 type GetGroupTakersOutput struct {
-	Body models.PaginatedResponse `json:"body"`
+	Body tables.PaginatedResponse `json:"body"`
 }
 
 func (h *GroupHandler) GetGroupTakers(ctx context.Context, input *GetGroupTakersInput) (*GetGroupTakersOutput, error) {
@@ -323,7 +324,7 @@ func (h *GroupHandler) GetGroupTakers(ctx context.Context, input *GetGroupTakers
 		return nil, huma.Error401Unauthorized("Authentication required")
 	}
 
-	pagination := models.Pagination{
+	pagination := tables.Pagination{
 		Page:    input.Page,
 		PerPage: input.PerPage,
 	}

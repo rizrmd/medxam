@@ -1,6 +1,6 @@
-# IoNbEc Frontend Application
+# MedXam Frontend Application
 
-A comprehensive examination management system frontend for the National Orthopaedic and Traumatology Board Examination (IoNbEc).
+A comprehensive examination management system frontend for the National Orthopaedic and Traumatology Board Examination (MedXam).
 
 ## Features
 

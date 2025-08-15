@@ -28,10 +28,10 @@ export function useParticipantStore() {
   const snap = useSnapshot(store.participant)
   return {
     groups: snap.groups,
-    candidates: snap.candidates,
+    participants: snap.participants,
     results: snap.results,
     currentGroup: snap.currentGroup,
-    currentCandidate: snap.currentCandidate,
+    currentParticipant: snap.currentParticipant,
     ...participantActions,
   }
 }
@@ -64,10 +64,10 @@ export function useParticipantStoreSync() {
   const snap = useSnapshot(store.participant, { sync: true })
   return {
     groups: snap.groups,
-    candidates: snap.candidates,
+    participants: snap.participants,
     results: snap.results,
     currentGroup: snap.currentGroup,
-    currentCandidate: snap.currentCandidate,
+    currentParticipant: snap.currentParticipant,
     ...participantActions,
   }
 }

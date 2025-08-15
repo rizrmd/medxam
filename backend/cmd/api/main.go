@@ -21,7 +21,7 @@ import (
 	"github.com/medxamion/medxamion/internal/database"
 	"github.com/medxamion/medxamion/internal/handlers"
 	"github.com/medxamion/medxamion/internal/middleware"
-	"github.com/medxamion/medxamion/internal/repository"
+	"github.com/medxamion/medxamion/internal/models"
 	"github.com/medxamion/medxamion/internal/services"
 )
 
@@ -47,33 +47,46 @@ func main() {
 	}
 	log.Println("Successfully connected to database")
 
-	// Initialize repositories
-	userRepo := repository.NewUserRepository(db)
-	sessionRepo := repository.NewSessionRepository(db)
-	groupRepo := repository.NewGroupRepository(db)
-	takerRepo := repository.NewTakerRepository(db)
-	examRepo := repository.NewExamRepository(db)
-	categoryRepo := repository.NewCategoryRepository(db)
-	itemRepo := repository.NewItemRepository(db)
-	deliveryRepo := repository.NewDeliveryRepository(db)
-	attemptRepo := repository.NewAttemptRepository(db)
+	// Initialize models
+	userModel := models.NewUserModel(db)
+	sessionModel := models.NewSessionModel(db)
+	groupModel := models.NewGroupModel(db)
+	participantModel := models.NewParticipantModel(db)
+	examModel := models.NewExamModel(db)
+	categoryModel := models.NewCategoryModel(db)
+	itemModel := models.NewItemModel(db)
+	deliveryModel := models.NewDeliveryModel(db)
+	attemptModel := models.NewAttemptModel(db)
+	deliveryAssignmentModel := models.NewDeliveryAssignmentModel(db)
+
+	// Initialize handlers first
+	examClientHandler := handlers.NewExamClientHandler()
 
 	// Initialize services
-	authService := services.NewAuthService(userRepo, sessionRepo, cfg)
+	authService := services.NewAuthService(userModel, sessionModel, cfg)
+	schedulerService := services.NewSchedulerService(deliveryModel, examClientHandler)
 
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(authService, cfg)
 
-	// Initialize handlers
+	// Initialize other handlers
 	authHandler := handlers.NewAuthHandler(authService, cfg)
-	userHandler := handlers.NewUserHandler(userRepo)
-	groupHandler := handlers.NewGroupHandler(groupRepo)
-	takerHandler := handlers.NewTakerHandler(takerRepo)
-	examHandler := handlers.NewExamHandler(examRepo)
-	categoryHandler := handlers.NewCategoryHandler(categoryRepo)
-	itemHandler := handlers.NewItemHandler(itemRepo)
-	deliveryHandler := handlers.NewDeliveryHandler(deliveryRepo)
-	attemptHandler := handlers.NewAttemptHandler(attemptRepo)
+	userHandler := handlers.NewUserHandler(userModel)
+	groupHandler := handlers.NewGroupHandler(groupModel)
+	participantHandler := handlers.NewParticipantHandler(participantModel)
+	examHandler := handlers.NewExamHandler(examModel)
+	categoryHandler := handlers.NewCategoryHandler(categoryModel)
+	itemHandler := handlers.NewItemHandler(itemModel)
+	deliveryHandler := handlers.NewDeliveryHandler(deliveryModel)
+	attemptHandler := handlers.NewAttemptHandler(attemptModel)
+	deliveryAssignmentHandler := handlers.NewDeliveryAssignmentHandler(deliveryAssignmentModel, deliveryModel)
+
+	// Initialize WebSocket hub
+	wsHub := handlers.NewWebSocketHub(deliveryModel)
+	wsHub.StartPeriodicUpdates()
+
+	// Initialize live progress handler
+	examClientLiveHandler := handlers.NewExamClientLiveHandler(deliveryModel, wsHub)
 
 	// Setup router
 	router := chi.NewRouter()
@@ -94,27 +107,33 @@ func main() {
 	// Session middleware (applies to all routes)
 	router.Use(authMiddleware.SessionMiddleware())
 
+	// WebSocket endpoint (before Huma API to avoid middleware conflicts)
+	router.HandleFunc("/api/deliveries/{id}/ws", wsHub.ServeWS)
+
 	// Create Huma API
-	api := humachi.New(router, huma.DefaultConfig("IoNbEc API", "1.0.0"))
+	api := humachi.New(router, huma.DefaultConfig("MedXam API", "1.0.0"))
 
 	// Configure API documentation
 	api.OpenAPI().Info.Description = "National Orthopaedic and Traumatology Board Examination API"
 	api.OpenAPI().Info.Contact = &huma.Contact{
-		Name: "IoNbEc Team",
+		Name: "MedXam Team",
 	}
 
 	// Register handlers
 	authHandler.Register(api)
-	
+
 	// Register protected handlers (they have their own auth checks in handlers)
 	userHandler.Register(api)
 	groupHandler.Register(api)
-	takerHandler.Register(api)
+	participantHandler.Register(api)
 	examHandler.Register(api)
 	categoryHandler.Register(api)
 	itemHandler.Register(api)
 	deliveryHandler.Register(api)
 	attemptHandler.Register(api)
+	examClientHandler.Register(api)
+	deliveryAssignmentHandler.Register(api)
+	examClientLiveHandler.Register(api)
 
 	// Health check endpoint
 	huma.Register(api, huma.Operation{
@@ -160,12 +179,21 @@ func main() {
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
-		
+
 		for range ticker.C {
 			if err := authService.CleanupExpiredSessions(); err != nil {
 				log.Printf("Failed to cleanup expired sessions: %v", err)
 			}
 		}
+	}()
+
+	// Start delivery scheduler service
+	schedulerCtx, cancelScheduler := context.WithCancel(context.Background())
+	defer cancelScheduler()
+
+	go func() {
+		log.Println("Starting delivery scheduler service...")
+		schedulerService.Start(schedulerCtx)
 	}()
 
 	// Start server
@@ -177,12 +205,36 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// Channel to signal when server is ready
+	serverReady := make(chan struct{})
+
 	// Start server in a goroutine
 	go func() {
 		log.Printf("Starting server on port %d", cfg.Port)
 		log.Printf("API documentation available at: http://localhost:%d/docs", cfg.Port)
+
+		// Signal that we're about to start listening
+		close(serverReady)
+
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server failed to start: %v", err)
+		}
+	}()
+
+	// Wait for server to be ready, then start built-in exam-client
+	<-serverReady
+
+	// Give the server a moment to actually start accepting connections
+	time.Sleep(100 * time.Millisecond)
+
+	builtinExamClient := services.NewExamClientService("http://localhost:8080", 0) // Built-in client with unlimited capacity
+	builtinCtx, cancelBuiltinClient := context.WithCancel(context.Background())
+	defer cancelBuiltinClient()
+
+	go func() {
+		log.Println("Starting built-in exam-client...")
+		if err := builtinExamClient.Start(builtinCtx); err != nil {
+			log.Printf("Built-in exam-client error: %v", err)
 		}
 	}()
 
@@ -192,11 +244,20 @@ func main() {
 	<-quit
 	log.Println("Shutting down server...")
 
+	// Stop services
+	log.Println("Stopping built-in exam-client...")
+	cancelBuiltinClient()
+	builtinExamClient.Stop()
+
+	log.Println("Stopping delivery scheduler service...")
+	cancelScheduler()
+	schedulerService.Stop()
+
 	// Graceful shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if err := server.Shutdown(ctx); err != nil {
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 

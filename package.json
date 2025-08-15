@@ -1,9 +1,10 @@
 {
   "name": "medxamion",
   "version": "1.0.0",
-  "description": "National Orthopaedic and Traumatology Board Examination System",
+  "description": "MedXam - National Orthopaedic and Traumatology Board Examination System",
   "scripts": {
-    "dev": "concurrently --kill-others-on-fail \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "bun scripts/dev.mjs",
+    "dev:legacy": "concurrently --kill-others-on-fail \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && mise exec -- go run ./cmd/api",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:tmux": "./start-dev-tmux.sh",

@@ -16,8 +16,10 @@ import { format } from 'date-fns'
 import { useNavigate } from 'react-router-dom'
 import { apiClient } from '@/lib/api'
 import { useListManagement } from '@/hooks/useListManagement'
-import { DataTable, Column, Pagination } from '@/components/ui/data-table'
-import { DateFilter, DateFilterValue } from '@/components/ui/date-filter'
+import { DataTable, Pagination } from '@/components/ui/data-table'
+import type { Column } from '@/components/ui/data-table'
+import { DateFilter } from '@/components/ui/date-filter'
+import type { DateFilterValue } from '@/components/ui/date-filter'
 import { useFastInput } from '@/hooks/useFastInput'
 
 interface Delivery {
@@ -211,7 +213,7 @@ export function DeliveryManagementModular() {
     if (!editingDelivery) return
     
     try {
-      const response = await apiClient.deliveries.update(editingDelivery.id, formData)
+      const response = await apiClient.deliveries.update(editingDelivery.id.toString(), formData)
       
       if (response.error) {
         alert('Failed to update delivery: ' + response.error)

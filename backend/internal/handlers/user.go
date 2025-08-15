@@ -5,18 +5,19 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/medxamion/medxamion/internal/tables"
+
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/medxamion/medxamion/internal/middleware"
 	"github.com/medxamion/medxamion/internal/models"
-	"github.com/medxamion/medxamion/internal/repository"
 	"github.com/medxamion/medxamion/internal/utils"
 )
 
 type UserHandler struct {
-	userRepo *repository.UserRepository
+	userRepo *models.UserModel
 }
 
-func NewUserHandler(userRepo *repository.UserRepository) *UserHandler {
+func NewUserHandler(userRepo *models.UserModel) *UserHandler {
 	return &UserHandler{userRepo: userRepo}
 }
 
@@ -90,7 +91,7 @@ type ListUsersInput struct {
 }
 
 type ListUsersOutput struct {
-	Body models.PaginatedResponse `json:"body"`
+	Body tables.PaginatedResponse `json:"body"`
 }
 
 func (h *UserHandler) ListUsers(ctx context.Context, input *ListUsersInput) (*ListUsersOutput, error) {
@@ -100,7 +101,7 @@ func (h *UserHandler) ListUsers(ctx context.Context, input *ListUsersInput) (*Li
 		return nil, huma.Error401Unauthorized("Authentication required")
 	}
 
-	pagination := models.Pagination{
+	pagination := tables.Pagination{
 		Page:    input.Page,
 		PerPage: input.PerPage,
 	}
@@ -120,8 +121,8 @@ type GetUserInput struct {
 
 type GetUserOutput struct {
 	Body struct {
-		User  *models.User   `json:"user"`
-		Roles []models.Role `json:"roles"`
+		User  *tables.User  `json:"user"`
+		Roles []tables.Role `json:"roles"`
 	} `json:"body"`
 }
 
@@ -146,8 +147,8 @@ func (h *UserHandler) GetUser(ctx context.Context, input *GetUserInput) (*GetUse
 
 	return &GetUserOutput{
 		Body: struct {
-			User  *models.User   `json:"user"`
-			Roles []models.Role `json:"roles"`
+			User  *tables.User  `json:"user"`
+			Roles []tables.Role `json:"roles"`
 		}{
 			User:  user,
 			Roles: roles,
@@ -157,14 +158,14 @@ func (h *UserHandler) GetUser(ctx context.Context, input *GetUserInput) (*GetUse
 
 // Create User
 type CreateUserInput struct {
-	Body models.UserCreateRequest `json:"body"`
+	Body tables.UserCreateRequest `json:"body"`
 }
 
 type CreateUserOutput struct {
 	Body struct {
 		Success bool         `json:"success"`
 		Message string       `json:"message"`
-		User    *models.User `json:"user,omitempty"`
+		User    *tables.User `json:"user,omitempty"`
 	} `json:"body"`
 }
 
@@ -200,7 +201,7 @@ func (h *UserHandler) CreateUser(ctx context.Context, input *CreateUserInput) (*
 		}
 	}
 
-	user := &models.User{
+	user := &tables.User{
 		Name:             input.Body.Name,
 		Username:         input.Body.Username,
 		Email:            input.Body.Email,
@@ -223,7 +224,7 @@ func (h *UserHandler) CreateUser(ctx context.Context, input *CreateUserInput) (*
 		Body: struct {
 			Success bool         `json:"success"`
 			Message string       `json:"message"`
-			User    *models.User `json:"user,omitempty"`
+			User    *tables.User `json:"user,omitempty"`
 		}{
 			Success: true,
 			Message: "User created successfully",
@@ -234,15 +235,15 @@ func (h *UserHandler) CreateUser(ctx context.Context, input *CreateUserInput) (*
 
 // Update User
 type UpdateUserInput struct {
-	ID   int                       `path:"id" minimum:"1"`
-	Body models.UserUpdateRequest `json:"body"`
+	ID   int                      `path:"id" minimum:"1"`
+	Body tables.UserUpdateRequest `json:"body"`
 }
 
 type UpdateUserOutput struct {
 	Body struct {
 		Success bool         `json:"success"`
 		Message string       `json:"message"`
-		User    *models.User `json:"user,omitempty"`
+		User    *tables.User `json:"user,omitempty"`
 	} `json:"body"`
 }
 
@@ -278,7 +279,7 @@ func (h *UserHandler) UpdateUser(ctx context.Context, input *UpdateUserInput) (*
 		Body: struct {
 			Success bool         `json:"success"`
 			Message string       `json:"message"`
-			User    *models.User `json:"user,omitempty"`
+			User    *tables.User `json:"user,omitempty"`
 		}{
 			Success: true,
 			Message: "User updated successfully",
@@ -340,8 +341,8 @@ func (h *UserHandler) DeleteUser(ctx context.Context, input *DeleteUserInput) (*
 
 // Change Password
 type ChangePasswordInput struct {
-	ID   int                           `path:"id" minimum:"1"`
-	Body models.ChangePasswordRequest `json:"body"`
+	ID   int                          `path:"id" minimum:"1"`
+	Body tables.ChangePasswordRequest `json:"body"`
 }
 
 type ChangePasswordOutput struct {

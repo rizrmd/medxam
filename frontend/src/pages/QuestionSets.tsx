@@ -4,6 +4,7 @@ import { useFastInput } from '@/hooks/useFastInput'
 import { apiClient } from '@/lib/api'
 import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
+import { useHeaderActions } from '@/hooks/useHeaderActions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -232,21 +233,20 @@ export function QuestionSets() {
   const paginatedQuestionSets = filteredQuestionSets.slice(startIndex, startIndex + itemsPerPage)
   const totalPages = Math.ceil(filteredQuestionSets.length / itemsPerPage)
 
+  const headerActions = (
+    <Button onClick={handleAddQuestionSet}>
+      <Plus className="h-4 w-4 mr-2" />
+      Question Set
+    </Button>
+  )
+  
+  useHeaderActions(headerActions)
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Manage Question Sets - IoNbEc</h1>
-        <Button onClick={handleAddQuestionSet}>
-          <Plus className="h-4 w-4 mr-2" />
-          Question Set
-        </Button>
-      </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Search & Filter</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <form onSubmit={handleSearch} className="flex gap-4">
             <Input
               placeholder="Search Title"

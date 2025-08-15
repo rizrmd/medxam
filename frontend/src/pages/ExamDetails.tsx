@@ -114,7 +114,6 @@ export function ExamDetails() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">Configure Exam - IoNbEc</h1>
             <p className="text-muted-foreground">{exam.name}</p>
           </div>
         </div>
@@ -332,9 +331,9 @@ export function ExamDetails() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Instructions for Candidates</Label>
+                    <Label>Instructions for Participants</Label>
                     <Textarea
-                      placeholder="Enter instructions that candidates will see before starting the exam..."
+                      placeholder="Enter instructions that participants will see before starting the exam..."
                       rows={4}
                     />
                   </div>

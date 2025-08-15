@@ -4,7 +4,7 @@
 **Status**: ✅ Completed
 
 ## Overview
-Implemented the complete attempt and scoring system for the IoNbEc backend, enabling exam attempt management, answer tracking, and results generation.
+Implemented the complete attempt and scoring system for the MedXam backend, enabling exam attempt management, answer tracking, and results generation.
 
 ## Features Implemented
 
@@ -83,4 +83,4 @@ All major backend functionality has been completed. The system now supports:
 - Attempt tracking and scoring
 - Results generation and analytics
 
-The IoNbEc backend is now feature-complete with all 24 originally specified features implemented.
+The MedXam backend is now feature-complete with all 24 originally specified features implemented.

@@ -8,8 +8,8 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/medxamion/medxamion/internal/config"
 	"github.com/medxamion/medxamion/internal/middleware"
-	"github.com/medxamion/medxamion/internal/models"
 	"github.com/medxamion/medxamion/internal/services"
+	"github.com/medxamion/medxamion/internal/tables"
 )
 
 type AuthHandler struct {
@@ -54,29 +54,29 @@ func (h *AuthHandler) Register(api huma.API) {
 }
 
 type LoginInput struct {
-	Body models.LoginRequest `json:"body"`
+	Body tables.LoginRequest `json:"body"`
 }
 
 type LoginOutput struct {
-	Body models.LoginResponse `json:"body"`
+	Body tables.LoginResponse `json:"body"`
 }
 
 func (h *AuthHandler) Login(ctx context.Context, input *LoginInput) (*LoginOutput, error) {
 	// For now, use placeholder values - we'll improve this later
-	ipAddress := "127.0.0.1"  // TODO: Get actual IP from context
-	userAgent := "unknown"    // TODO: Get actual User-Agent from context
+	ipAddress := "127.0.0.1" // TODO: Get actual IP from context
+	userAgent := "unknown"   // TODO: Get actual User-Agent from context
 
 	// Attempt login
 	session, user, err := h.authService.Login(
-		input.Body.Username, 
-		input.Body.Password, 
-		ipAddress, 
+		input.Body.Username,
+		input.Body.Password,
+		ipAddress,
 		userAgent,
 	)
 	if err != nil {
 		fmt.Printf("DEBUG: Login handler error: %v\n", err)
 		return &LoginOutput{
-			Body: models.LoginResponse{
+			Body: tables.LoginResponse{
 				Success: false,
 				Message: "Invalid username or password",
 			},
@@ -90,7 +90,7 @@ func (h *AuthHandler) Login(ctx context.Context, input *LoginInput) (*LoginOutpu
 	user.Password = ""
 
 	return &LoginOutput{
-		Body: models.LoginResponse{
+		Body: tables.LoginResponse{
 			Success:   true,
 			Message:   "Login successful",
 			User:      user,
@@ -123,15 +123,15 @@ func (h *AuthHandler) Logout(ctx context.Context, input *struct{}) (*LogoutOutpu
 
 type CurrentUserOutput struct {
 	Body struct {
-		User        *models.User        `json:"user"`
-		SessionData *models.SessionData `json:"session_data,omitempty"`
+		User        *tables.User        `json:"user"`
+		SessionData *tables.SessionData `json:"session_data,omitempty"`
 	} `json:"body"`
 }
 
 func (h *AuthHandler) GetCurrentUser(ctx context.Context, input *struct{}) (*CurrentUserOutput, error) {
 	user := middleware.GetUserFromContext(ctx)
 	sessionData := middleware.GetSessionDataFromContext(ctx)
-	
+
 	if user == nil {
 		return nil, huma.Error401Unauthorized("Not authenticated")
 	}
@@ -141,8 +141,8 @@ func (h *AuthHandler) GetCurrentUser(ctx context.Context, input *struct{}) (*Cur
 
 	return &CurrentUserOutput{
 		Body: struct {
-			User        *models.User        `json:"user"`
-			SessionData *models.SessionData `json:"session_data,omitempty"`
+			User        *tables.User        `json:"user"`
+			SessionData *tables.SessionData `json:"session_data,omitempty"`
 		}{
 			User:        user,
 			SessionData: sessionData,

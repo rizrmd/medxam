@@ -4,17 +4,18 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/medxamion/medxamion/internal/models"
+	"github.com/medxamion/medxamion/internal/tables"
+
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/medxamion/medxamion/internal/middleware"
-	"github.com/medxamion/medxamion/internal/models"
-	"github.com/medxamion/medxamion/internal/repository"
 )
 
 type CategoryHandler struct {
-	categoryRepo *repository.CategoryRepository
+	categoryRepo *models.CategoryModel
 }
 
-func NewCategoryHandler(categoryRepo *repository.CategoryRepository) *CategoryHandler {
+func NewCategoryHandler(categoryRepo *models.CategoryModel) *CategoryHandler {
 	return &CategoryHandler{categoryRepo: categoryRepo}
 }
 
@@ -119,7 +120,7 @@ type ListCategoriesInput struct {
 }
 
 type ListCategoriesOutput struct {
-	Body models.PaginatedResponse `json:"body"`
+	Body tables.PaginatedResponse `json:"body"`
 }
 
 func (h *CategoryHandler) ListCategories(ctx context.Context, input *ListCategoriesInput) (*ListCategoriesOutput, error) {
@@ -128,14 +129,14 @@ func (h *CategoryHandler) ListCategories(ctx context.Context, input *ListCategor
 		return nil, huma.Error401Unauthorized("Authentication required")
 	}
 
-	pagination := models.Pagination{
+	pagination := tables.Pagination{
 		Page:    input.Page,
 		PerPage: input.PerPage,
 	}
 
-	search := models.CategorySearchRequest{
+	search := tables.CategorySearchRequest{
 		Name: input.Name,
-		Type: models.CategoryType(input.Type),
+		Type: tables.CategoryType(input.Type),
 	}
 
 	result, err := h.categoryRepo.List(pagination, search)
@@ -152,7 +153,7 @@ type GetCategoryInput struct {
 }
 
 type GetCategoryOutput struct {
-	Body *models.Category `json:"body"`
+	Body *tables.Category `json:"body"`
 }
 
 func (h *CategoryHandler) GetCategory(ctx context.Context, input *GetCategoryInput) (*GetCategoryOutput, error) {
@@ -171,14 +172,14 @@ func (h *CategoryHandler) GetCategory(ctx context.Context, input *GetCategoryInp
 
 // Create Category
 type CreateCategoryInput struct {
-	Body models.CategoryCreateRequest `json:"body"`
+	Body tables.CategoryCreateRequest `json:"body"`
 }
 
 type CreateCategoryOutput struct {
 	Body struct {
-		Success  bool              `json:"success"`
-		Message  string            `json:"message"`
-		Category *models.Category `json:"category,omitempty"`
+		Success  bool             `json:"success"`
+		Message  string           `json:"message"`
+		Category *tables.Category `json:"category,omitempty"`
 	} `json:"body"`
 }
 
@@ -200,7 +201,7 @@ func (h *CategoryHandler) CreateCategory(ctx context.Context, input *CreateCateg
 		return nil, huma.Error403Forbidden("Admin role required")
 	}
 
-	category := &models.Category{
+	category := &tables.Category{
 		Type:        string(input.Body.Type),
 		Code:        input.Body.Code,
 		Parent:      input.Body.Parent,
@@ -216,9 +217,9 @@ func (h *CategoryHandler) CreateCategory(ctx context.Context, input *CreateCateg
 
 	return &CreateCategoryOutput{
 		Body: struct {
-			Success  bool              `json:"success"`
-			Message  string            `json:"message"`
-			Category *models.Category `json:"category,omitempty"`
+			Success  bool             `json:"success"`
+			Message  string           `json:"message"`
+			Category *tables.Category `json:"category,omitempty"`
 		}{
 			Success:  true,
 			Message:  "Category created successfully",
@@ -230,14 +231,14 @@ func (h *CategoryHandler) CreateCategory(ctx context.Context, input *CreateCateg
 // Update Category
 type UpdateCategoryInput struct {
 	ID   int                          `path:"id" minimum:"1"`
-	Body models.CategoryUpdateRequest `json:"body"`
+	Body tables.CategoryUpdateRequest `json:"body"`
 }
 
 type UpdateCategoryOutput struct {
 	Body struct {
-		Success  bool              `json:"success"`
-		Message  string            `json:"message"`
-		Category *models.Category `json:"category,omitempty"`
+		Success  bool             `json:"success"`
+		Message  string           `json:"message"`
+		Category *tables.Category `json:"category,omitempty"`
 	} `json:"body"`
 }
 
@@ -266,9 +267,9 @@ func (h *CategoryHandler) UpdateCategory(ctx context.Context, input *UpdateCateg
 
 	return &UpdateCategoryOutput{
 		Body: struct {
-			Success  bool              `json:"success"`
-			Message  string            `json:"message"`
-			Category *models.Category `json:"category,omitempty"`
+			Success  bool             `json:"success"`
+			Message  string           `json:"message"`
+			Category *tables.Category `json:"category,omitempty"`
 		}{
 			Success:  true,
 			Message:  "Category updated successfully",
@@ -329,7 +330,7 @@ type GetCategoriesByTypeInput struct {
 }
 
 type GetCategoriesByTypeOutput struct {
-	Body []models.Category `json:"body"`
+	Body []tables.Category `json:"body"`
 }
 
 func (h *CategoryHandler) GetCategoriesByType(ctx context.Context, input *GetCategoriesByTypeInput) (*GetCategoriesByTypeOutput, error) {
@@ -338,7 +339,7 @@ func (h *CategoryHandler) GetCategoriesByType(ctx context.Context, input *GetCat
 		return nil, huma.Error401Unauthorized("Authentication required")
 	}
 
-	categories, err := h.categoryRepo.GetByType(models.CategoryType(input.Type))
+	categories, err := h.categoryRepo.GetByType(tables.CategoryType(input.Type))
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to get categories", err)
 	}
@@ -354,7 +355,7 @@ type GetCategoryQuestionsInput struct {
 }
 
 type GetCategoryQuestionsOutput struct {
-	Body models.PaginatedResponse `json:"body"`
+	Body tables.PaginatedResponse `json:"body"`
 }
 
 func (h *CategoryHandler) GetCategoryQuestions(ctx context.Context, input *GetCategoryQuestionsInput) (*GetCategoryQuestionsOutput, error) {
@@ -363,7 +364,7 @@ func (h *CategoryHandler) GetCategoryQuestions(ctx context.Context, input *GetCa
 		return nil, huma.Error401Unauthorized("Authentication required")
 	}
 
-	pagination := models.Pagination{
+	pagination := tables.Pagination{
 		Page:    input.Page,
 		PerPage: input.PerPage,
 	}

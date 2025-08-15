@@ -4,17 +4,18 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/medxamion/medxamion/internal/models"
+	"github.com/medxamion/medxamion/internal/tables"
+
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/medxamion/medxamion/internal/middleware"
-	"github.com/medxamion/medxamion/internal/models"
-	"github.com/medxamion/medxamion/internal/repository"
 )
 
 type ItemHandler struct {
-	itemRepo *repository.ItemRepository
+	itemRepo *models.ItemModel
 }
 
-func NewItemHandler(itemRepo *repository.ItemRepository) *ItemHandler {
+func NewItemHandler(itemRepo *models.ItemModel) *ItemHandler {
 	return &ItemHandler{itemRepo: itemRepo}
 }
 
@@ -110,7 +111,7 @@ type ListItemsInput struct {
 }
 
 type ListItemsOutput struct {
-	Body models.PaginatedResponse `json:"body"`
+	Body tables.PaginatedResponse `json:"body"`
 }
 
 func (h *ItemHandler) ListItems(ctx context.Context, input *ListItemsInput) (*ListItemsOutput, error) {
@@ -119,7 +120,7 @@ func (h *ItemHandler) ListItems(ctx context.Context, input *ListItemsInput) (*Li
 		return nil, huma.Error401Unauthorized("Authentication required")
 	}
 
-	pagination := models.Pagination{
+	pagination := tables.Pagination{
 		Page:    input.Page,
 		PerPage: input.PerPage,
 	}
@@ -133,7 +134,7 @@ func (h *ItemHandler) ListItems(ctx context.Context, input *ListItemsInput) (*Li
 		isVignette = &v
 	}
 
-	search := models.ItemSearchRequest{
+	search := tables.ItemSearchRequest{
 		Title:      input.Title,
 		Type:       input.Type,
 		IsVignette: isVignette,
@@ -153,7 +154,7 @@ type GetItemInput struct {
 }
 
 type GetItemOutput struct {
-	Body *models.Item `json:"body"`
+	Body *tables.Item `json:"body"`
 }
 
 func (h *ItemHandler) GetItem(ctx context.Context, input *GetItemInput) (*GetItemOutput, error) {
@@ -176,7 +177,7 @@ type GetItemWithQuestionsInput struct {
 }
 
 type GetItemWithQuestionsOutput struct {
-	Body *models.ItemWithQuestions `json:"body"`
+	Body *tables.ItemWithQuestions `json:"body"`
 }
 
 func (h *ItemHandler) GetItemWithQuestions(ctx context.Context, input *GetItemWithQuestionsInput) (*GetItemWithQuestionsOutput, error) {
@@ -195,14 +196,14 @@ func (h *ItemHandler) GetItemWithQuestions(ctx context.Context, input *GetItemWi
 
 // Create Item
 type CreateItemInput struct {
-	Body models.ItemCreateRequest `json:"body"`
+	Body tables.ItemCreateRequest `json:"body"`
 }
 
 type CreateItemOutput struct {
 	Body struct {
 		Success bool         `json:"success"`
 		Message string       `json:"message"`
-		Item    *models.Item `json:"item,omitempty"`
+		Item    *tables.Item `json:"item,omitempty"`
 	} `json:"body"`
 }
 
@@ -225,7 +226,7 @@ func (h *ItemHandler) CreateItem(ctx context.Context, input *CreateItemInput) (*
 	}
 
 	clientID := 2 // Default client ID
-	item := &models.Item{
+	item := &tables.Item{
 		Title:      input.Body.Title,
 		Content:    input.Body.Content,
 		Type:       input.Body.Type,
@@ -244,7 +245,7 @@ func (h *ItemHandler) CreateItem(ctx context.Context, input *CreateItemInput) (*
 		Body: struct {
 			Success bool         `json:"success"`
 			Message string       `json:"message"`
-			Item    *models.Item `json:"item,omitempty"`
+			Item    *tables.Item `json:"item,omitempty"`
 		}{
 			Success: true,
 			Message: "Question set created successfully",
@@ -256,14 +257,14 @@ func (h *ItemHandler) CreateItem(ctx context.Context, input *CreateItemInput) (*
 // Update Item
 type UpdateItemInput struct {
 	ID   int                      `path:"id" minimum:"1"`
-	Body models.ItemUpdateRequest `json:"body"`
+	Body tables.ItemUpdateRequest `json:"body"`
 }
 
 type UpdateItemOutput struct {
 	Body struct {
 		Success bool         `json:"success"`
 		Message string       `json:"message"`
-		Item    *models.Item `json:"item,omitempty"`
+		Item    *tables.Item `json:"item,omitempty"`
 	} `json:"body"`
 }
 
@@ -294,7 +295,7 @@ func (h *ItemHandler) UpdateItem(ctx context.Context, input *UpdateItemInput) (*
 		Body: struct {
 			Success bool         `json:"success"`
 			Message string       `json:"message"`
-			Item    *models.Item `json:"item,omitempty"`
+			Item    *tables.Item `json:"item,omitempty"`
 		}{
 			Success: true,
 			Message: "Question set updated successfully",
@@ -357,7 +358,7 @@ type GetItemQuestionsInput struct {
 }
 
 type GetItemQuestionsOutput struct {
-	Body models.PaginatedResponse `json:"body"`
+	Body tables.PaginatedResponse `json:"body"`
 }
 
 func (h *ItemHandler) GetItemQuestions(ctx context.Context, input *GetItemQuestionsInput) (*GetItemQuestionsOutput, error) {
@@ -366,7 +367,7 @@ func (h *ItemHandler) GetItemQuestions(ctx context.Context, input *GetItemQuesti
 		return nil, huma.Error401Unauthorized("Authentication required")
 	}
 
-	pagination := models.Pagination{
+	pagination := tables.Pagination{
 		Page:    input.Page,
 		PerPage: input.PerPage,
 	}
@@ -385,7 +386,7 @@ type GetItemCategoriesInput struct {
 }
 
 type GetItemCategoriesOutput struct {
-	Body []models.Category `json:"body"`
+	Body []tables.Category `json:"body"`
 }
 
 func (h *ItemHandler) GetItemCategories(ctx context.Context, input *GetItemCategoriesInput) (*GetItemCategoriesOutput, error) {

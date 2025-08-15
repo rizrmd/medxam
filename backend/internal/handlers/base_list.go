@@ -6,17 +6,17 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/medxamion/medxamion/internal/middleware"
-	"github.com/medxamion/medxamion/internal/models"
+	"github.com/medxamion/medxamion/internal/tables"
 )
 
 // BaseListInput provides common list operation parameters
 type BaseListInput struct {
-	Page        int    `query:"page" default:"1" minimum:"1"`
-	PerPage     int    `query:"per_page" default:"15" minimum:"1" maximum:"100"`
-	Search      string `query:"search" maxLength:"255"`
-	SortBy      string `query:"sort_by" default:"created_at"`
-	SortOrder   string `query:"sort_order" default:"desc" enum:"asc,desc"`
-	
+	Page      int    `query:"page" default:"1" minimum:"1"`
+	PerPage   int    `query:"per_page" default:"15" minimum:"1" maximum:"100"`
+	Search    string `query:"search" maxLength:"255"`
+	SortBy    string `query:"sort_by" default:"created_at"`
+	SortOrder string `query:"sort_order" default:"desc" enum:"asc,desc"`
+
 	// Date filtering
 	DateFilterMode string `query:"date_filter_mode" enum:"exact,month,year,range"`
 	DateField      string `query:"date_field" default:"created_at"`
@@ -145,8 +145,8 @@ func ValidateListAccess(ctx context.Context, requiredRole string) error {
 }
 
 // BuildPagination creates pagination struct from input
-func BuildPagination(input BaseListInput) models.Pagination {
-	return models.Pagination{
+func BuildPagination(input BaseListInput) tables.Pagination {
+	return tables.Pagination{
 		Page:    input.Page,
 		PerPage: input.PerPage,
 	}
@@ -156,12 +156,12 @@ func BuildPagination(input BaseListInput) models.Pagination {
 type ListHandler interface {
 	ValidateAccess(ctx context.Context) error
 	ParseFilters(input interface{}) (interface{}, error)
-	FetchData(pagination models.Pagination, filters interface{}) (*models.PaginatedResponse, error)
+	FetchData(pagination tables.Pagination, filters interface{}) (*tables.PaginatedResponse, error)
 }
 
 // GenericListResponse wraps paginated response
 type GenericListResponse struct {
-	Body models.PaginatedResponse `json:"body"`
+	Body tables.PaginatedResponse `json:"body"`
 }
 
 // HandleGenericList processes generic list requests
@@ -178,12 +178,12 @@ func HandleGenericList(ctx context.Context, handler ListHandler, input interface
 	}
 
 	// Build pagination from base input
-	var pagination models.Pagination
+	var pagination tables.Pagination
 	if baseInput, ok := input.(*BaseListInput); ok {
 		pagination = BuildPagination(*baseInput)
 	} else {
 		// Default pagination
-		pagination = models.Pagination{
+		pagination = tables.Pagination{
 			Page:    1,
 			PerPage: 15,
 		}

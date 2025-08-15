@@ -1,50 +1,31 @@
 import { useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, NavLink } from 'react-router-dom'
 import { useLocalStateSync } from '@/hooks/useLocalState'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Card, CardContent } from '@/components/ui/card'
 import { 
   ArrowLeft, 
   Save, 
-  Package,
-  Calendar,
-  Clock,
-  Users,
-  Settings,
-  UserCheck,
-  FileText,
   Play,
   Pause,
   Square,
-  BarChart3
+  Timer
 } from 'lucide-react'
-import { format } from 'date-fns'
-import { formatLongDate, formatShortDate, formatDateForInput } from '@/lib/date-utils'
 import { apiClient } from '@/lib/api'
 import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
 
+// Import modular components
+import { DeliveryBasicInfo } from '@/components/delivery/DeliveryBasicInfo'
+import { DeliverySchedule } from '@/components/delivery/DeliverySchedule'
+import { DeliveryParticipants } from '@/components/delivery/DeliveryParticipants'
+import { DeliveryMonitoring } from '@/components/delivery/DeliveryMonitoring'
+import { DeliveryReports } from '@/components/delivery/DeliveryReports'
+import { DeliveryAssignments } from '@/components/delivery/DeliveryAssignments'
+
 export function DeliveryDetails() {
-  const { id } = useParams<{ id: string }>()
+  const { id, tab } = useParams<{ id: string; tab?: string }>()
+  const currentTab = tab || 'basic'
   const [state, setState] = useLocalStateSync({
     delivery: null as any,
     deliveryName: '',
@@ -91,7 +72,7 @@ export function DeliveryDetails() {
     try {
       const updateData = {
         name: state.deliveryName,
-        start_date: state.selectedDate && state.selectedTime ? `${state.selectedDate}T${state.selectedTime}:00` : null,
+        scheduled_at: state.selectedDate && state.selectedTime ? `${state.selectedDate}T${state.selectedTime}:00` : null,
       }
       
       const response = await apiClient.deliveries.update(id, updateData)
@@ -107,6 +88,27 @@ export function DeliveryDetails() {
     }
   }
 
+  const handleManualStart = async () => {
+    if (!id || !state.delivery) return
+    
+    if (!confirm('Are you sure you want to manually start this delivery? This will allow participants to begin the exam.')) {
+      return
+    }
+    
+    try {
+      const response = await apiClient.post(`/deliveries/${id}/start`)
+      
+      if (response.error) {
+        alert('Failed to start delivery: ' + response.error)
+      } else {
+        alert('Delivery started successfully')
+        fetchDelivery()
+      }
+    } catch (err) {
+      alert('Failed to start delivery')
+    }
+  }
+
   if (state.loading) {
     return <Loading message="Loading delivery details..." />
   }
@@ -115,35 +117,6 @@ export function DeliveryDetails() {
     return <ErrorMessage error={state.error} onRetry={fetchDelivery} />
   }
 
-  // Mock participants for this delivery
-  const participants = [
-    {
-      id: 'p1',
-      code: 'REG00001',
-      name: 'Dr. John Smith',
-      email: 'john.smith@example.com',
-      status: 'registered',
-      group: 'Primary Board Group 1'
-    },
-    {
-      id: 'p2',
-      code: 'REG00002',
-      name: 'Dr. Sarah Johnson',
-      email: 'sarah.johnson@example.com',
-      status: 'completed',
-      group: 'Primary Board Group 1'
-    }
-  ]
-
-  const getStatusBadge = (status: string) => {
-    const colors = {
-      registered: 'bg-blue-100 text-blue-800',
-      'in-progress': 'bg-orange-100 text-orange-800',
-      completed: 'bg-green-100 text-green-800',
-      absent: 'bg-gray-100 text-gray-800',
-    }
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
-  }
 
   if (!state.delivery) {
     return (
@@ -170,16 +143,25 @@ export function DeliveryDetails() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">Configure Delivery - IoNbEc</h1>
             <p className="text-muted-foreground">{state.delivery.name}</p>
           </div>
         </div>
         <div className="flex gap-2">
-          {state.delivery.status === 'scheduled' && (
-            <Button variant="outline">
-              <Play className="h-4 w-4 mr-2" />
-              Start Delivery
+          {state.delivery.status === 'scheduled' && !state.delivery.automatic_start && (
+            <Button 
+              variant="outline"
+              onClick={handleManualStart}
+              className="bg-orange-50 hover:bg-orange-100 border-orange-200"
+            >
+              <Play className="h-4 w-4 mr-2 text-orange-600" />
+              Manual Start
             </Button>
+          )}
+          {state.delivery.status === 'scheduled' && state.delivery.automatic_start && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-md border border-blue-200">
+              <Timer className="h-4 w-4 text-blue-600" />
+              <span className="text-sm text-blue-700">Auto-starts at scheduled time</span>
+            </div>
           )}
           {state.delivery.status === 'ongoing' && (
             <>
@@ -201,372 +183,119 @@ export function DeliveryDetails() {
       </div>
 
       <Card>
-        <CardContent>
-          <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="basic">Basic Info</TabsTrigger>
-              <TabsTrigger value="schedule">Schedule</TabsTrigger>
-              <TabsTrigger value="participants">Participants</TabsTrigger>
-              <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
-              <TabsTrigger value="reports">Reports</TabsTrigger>
-            </TabsList>
+        <CardContent className="pt-6">
+          <div className="w-full">
+            {/* Tab Navigation */}
+            <div className="flex space-x-1 rounded-lg bg-muted p-1 mb-6">
+              <NavLink
+                to={`/back-office/delivery/${id}/basic`}
+                className={({ isActive }) =>
+                  `flex-1 rounded-md px-3 py-2 text-sm font-medium text-center transition-colors ${
+                    isActive
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`
+                }
+              >
+                Basic Info
+              </NavLink>
+              <NavLink
+                to={`/back-office/delivery/${id}/schedule`}
+                className={({ isActive }) =>
+                  `flex-1 rounded-md px-3 py-2 text-sm font-medium text-center transition-colors ${
+                    isActive
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`
+                }
+              >
+                Schedule
+              </NavLink>
+              <NavLink
+                to={`/back-office/delivery/${id}/participants`}
+                className={({ isActive }) =>
+                  `flex-1 rounded-md px-3 py-2 text-sm font-medium text-center transition-colors ${
+                    isActive
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`
+                }
+              >
+                Participants
+              </NavLink>
+              <NavLink
+                to={`/back-office/delivery/${id}/monitoring`}
+                className={({ isActive }) =>
+                  `flex-1 rounded-md px-3 py-2 text-sm font-medium text-center transition-colors ${
+                    isActive
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`
+                }
+              >
+                Monitoring
+              </NavLink>
+              <NavLink
+                to={`/back-office/delivery/${id}/reports`}
+                className={({ isActive }) =>
+                  `flex-1 rounded-md px-3 py-2 text-sm font-medium text-center transition-colors ${
+                    isActive
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`
+                }
+              >
+                Reports
+              </NavLink>
+              <NavLink
+                to={`/back-office/delivery/${id}/assignments`}
+                className={({ isActive }) =>
+                  `flex-1 rounded-md px-3 py-2 text-sm font-medium text-center transition-colors ${
+                    isActive
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`
+                }
+              >
+                Assignments
+              </NavLink>
+            </div>
             
-            <TabsContent value="basic" className="space-y-6 mt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="h-5 w-5" />
-                      Delivery Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="deliveryName">Delivery Name</Label>
-                      <Input
-                        id="deliveryName"
-                        value={state.deliveryName || state.delivery.name}
-                        onChange={(e) => setState.deliveryName = e.target.value}
-                        placeholder="Enter delivery name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="exam">Associated Exam</Label>
-                      <Select value={state.delivery.examId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select exam" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="exam_1">Primary Board Exam</SelectItem>
-                          <SelectItem value="exam_2">Fellowship Exam</SelectItem>
-                          <SelectItem value="exam_3">Mock Exam</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="group">Target Group</Label>
-                      <Select value={state.delivery.groupId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select group" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="group_1">Primary Board Group 1</SelectItem>
-                          <SelectItem value="group_2">Fellowship Group A</SelectItem>
-                          <SelectItem value="group_3">Mock Exam Group</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        placeholder="Enter delivery description..."
-                        rows={3}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Settings className="h-5 w-5" />
-                      Delivery Settings
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Current Status</Label>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          state.delivery.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                          state.delivery.status === 'ongoing' ? 'bg-orange-100 text-orange-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {state.delivery.status}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Duration</Label>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>{state.delivery.duration} minutes</span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Auto-start</Label>
-                      <Select defaultValue="disabled">
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="disabled">Manual start</SelectItem>
-                          <SelectItem value="scheduled">Auto-start at scheduled time</SelectItem>
-                          <SelectItem value="on-login">Start when first candidate logs in</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Late Entry Policy</Label>
-                      <Select defaultValue="allowed">
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="allowed">Allow late entry</SelectItem>
-                          <SelectItem value="grace-15">15 min grace period</SelectItem>
-                          <SelectItem value="grace-30">30 min grace period</SelectItem>
-                          <SelectItem value="strict">No late entry</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
+            {/* Tab Content */}
+            {currentTab === 'basic' && (
+              <DeliveryBasicInfo
+                delivery={state.delivery}
+                deliveryName={state.deliveryName}
+                onNameChange={(name) => setState.deliveryName = name}
+              />
+            )}
             
-            <TabsContent value="schedule" className="space-y-6 mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    Schedule Settings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="date">Exam Date</Label>
-                      <Input
-                        id="date"
-                        type="date"
-                        value={state.selectedDate || formatDateForInput(state.delivery.schedule)}
-                        onChange={(e) => setState.selectedDate = e.target.value}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="time">Start Time</Label>
-                      <Input
-                        id="time"
-                        type="time"
-                        value={state.selectedTime || (state.delivery.schedule ? format(new Date(state.delivery.schedule), 'HH:mm') : '')}
-                        onChange={(e) => setState.selectedTime = e.target.value}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Time Zone</Label>
-                      <Select defaultValue="UTC+7">
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="UTC+7">WIB (UTC+7)</SelectItem>
-                          <SelectItem value="UTC+8">WITA (UTC+8)</SelectItem>
-                          <SelectItem value="UTC+9">WIT (UTC+9)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Registration Deadline</Label>
-                      <Input
-                        type="datetime-local"
-                        defaultValue="2025-08-14T23:59"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+            {currentTab === 'schedule' && (
+              <DeliverySchedule
+                delivery={state.delivery}
+                selectedDate={state.selectedDate}
+                selectedTime={state.selectedTime}
+                onDateChange={(date) => setState.selectedDate = date}
+                onTimeChange={(time) => setState.selectedTime = time}
+              />
+            )}
             
-            <TabsContent value="participants" className="space-y-6 mt-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium">Registered Participants</h3>
-                <div className="flex gap-2">
-                  <Button variant="outline">
-                    Import Candidates
-                  </Button>
-                  <Button>
-                    Add Participant
-                  </Button>
-                </div>
-              </div>
-
-              <Card>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>CODE</TableHead>
-                        <TableHead>NAME</TableHead>
-                        <TableHead>EMAIL</TableHead>
-                        <TableHead>GROUP</TableHead>
-                        <TableHead>STATUS</TableHead>
-                        <TableHead>ACTIONS</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {participants.map((participant) => (
-                        <TableRow key={participant.id}>
-                          <TableCell>
-                            <span className="font-mono text-sm">{participant.code}</span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <UserCheck className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{participant.name}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">{participant.email}</TableCell>
-                          <TableCell className="text-sm">{participant.group}</TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(participant.status)}`}>
-                              {participant.status}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button variant="ghost" size="sm">
-                                View
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                Remove
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Participant Summary</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-4 gap-4 text-center">
-                    <div>
-                      <div className="text-2xl font-bold text-blue-600">2</div>
-                      <div className="text-sm text-muted-foreground">Registered</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-orange-600">0</div>
-                      <div className="text-sm text-muted-foreground">In Progress</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-green-600">1</div>
-                      <div className="text-sm text-muted-foreground">Completed</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-gray-600">0</div>
-                      <div className="text-sm text-muted-foreground">Absent</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+            {currentTab === 'participants' && (
+              <DeliveryParticipants deliveryId={id!} />
+            )}
             
-            <TabsContent value="monitoring" className="space-y-6 mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Real-time Monitoring</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <h4 className="font-medium">System Status</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm">Server Status</span>
-                          <span className="text-sm text-green-600">Online</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Database</span>
-                          <span className="text-sm text-green-600">Connected</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Active Sessions</span>
-                          <span className="text-sm font-medium">1</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Exam Progress</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm">Started</span>
-                          <span className="text-sm font-medium">1/2</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Completed</span>
-                          <span className="text-sm font-medium">1/2</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Average Progress</span>
-                          <span className="text-sm font-medium">85%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+            {currentTab === 'monitoring' && (
+              <DeliveryMonitoring deliveryId={id!} delivery={state.delivery} />
+            )}
             
-            <TabsContent value="reports" className="space-y-6 mt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5" />
-                      Quick Reports
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Button variant="outline" className="w-full justify-start">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Attendance Report
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      Progress Report
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      <Clock className="h-4 w-4 mr-2" />
-                      Time Analysis
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      <Users className="h-4 w-4 mr-2" />
-                      Participant Summary
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Export Options</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Button variant="outline" className="w-full">
-                      Export to Excel
-                    </Button>
-                    <Button variant="outline" className="w-full">
-                      Export to PDF
-                    </Button>
-                    <Button variant="outline" className="w-full">
-                      Generate Certificate
-                    </Button>
-                    <Button variant="outline" className="w-full">
-                      Bulk Email Results
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          </Tabs>
+            {currentTab === 'reports' && (
+              <DeliveryReports deliveryId={id!} delivery={state.delivery} />
+            )}
+            
+            {currentTab === 'assignments' && (
+              <DeliveryAssignments deliveryId={parseInt(id!)} />
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

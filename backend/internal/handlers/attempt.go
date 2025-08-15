@@ -4,17 +4,18 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/medxamion/medxamion/internal/models"
+	"github.com/medxamion/medxamion/internal/tables"
+
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/medxamion/medxamion/internal/middleware"
-	"github.com/medxamion/medxamion/internal/models"
-	"github.com/medxamion/medxamion/internal/repository"
 )
 
 type AttemptHandler struct {
-	attemptRepo *repository.AttemptRepository
+	attemptRepo *models.AttemptModel
 }
 
-func NewAttemptHandler(attemptRepo *repository.AttemptRepository) *AttemptHandler {
+func NewAttemptHandler(attemptRepo *models.AttemptModel) *AttemptHandler {
 	return &AttemptHandler{attemptRepo: attemptRepo}
 }
 
@@ -121,7 +122,7 @@ type ListAttemptsInput struct {
 }
 
 type ListAttemptsOutput struct {
-	Body models.PaginatedResponse `json:"body"`
+	Body tables.PaginatedResponse `json:"body"`
 }
 
 func (h *AttemptHandler) ListAttempts(ctx context.Context, input *ListAttemptsInput) (*ListAttemptsOutput, error) {
@@ -130,7 +131,7 @@ func (h *AttemptHandler) ListAttempts(ctx context.Context, input *ListAttemptsIn
 		return nil, huma.Error401Unauthorized("Authentication required")
 	}
 
-	pagination := models.Pagination{
+	pagination := tables.Pagination{
 		Page:    input.Page,
 		PerPage: input.PerPage,
 	}
@@ -144,7 +145,7 @@ func (h *AttemptHandler) ListAttempts(ctx context.Context, input *ListAttemptsIn
 		isFinished = &v
 	}
 
-	search := models.AttemptSearchRequest{
+	search := tables.AttemptSearchRequest{
 		TakerID:    input.TakerID,
 		DeliveryID: input.DeliveryID,
 		ExamID:     input.ExamID,
@@ -165,7 +166,7 @@ type GetAttemptInput struct {
 }
 
 type GetAttemptOutput struct {
-	Body *models.Attempt `json:"body"`
+	Body *tables.Attempt `json:"body"`
 }
 
 func (h *AttemptHandler) GetAttempt(ctx context.Context, input *GetAttemptInput) (*GetAttemptOutput, error) {
@@ -188,7 +189,7 @@ type GetAttemptWithDetailsInput struct {
 }
 
 type GetAttemptWithDetailsOutput struct {
-	Body *models.AttemptWithDetails `json:"body"`
+	Body *tables.AttemptWithDetails `json:"body"`
 }
 
 func (h *AttemptHandler) GetAttemptWithDetails(ctx context.Context, input *GetAttemptWithDetailsInput) (*GetAttemptWithDetailsOutput, error) {
@@ -207,14 +208,14 @@ func (h *AttemptHandler) GetAttemptWithDetails(ctx context.Context, input *GetAt
 
 // Start Attempt
 type StartAttemptInput struct {
-	Body models.AttemptCreateRequest `json:"body"`
+	Body tables.AttemptCreateRequest `json:"body"`
 }
 
 type StartAttemptOutput struct {
 	Body struct {
 		Success bool            `json:"success"`
 		Message string          `json:"message"`
-		Attempt *models.Attempt `json:"attempt,omitempty"`
+		Attempt *tables.Attempt `json:"attempt,omitempty"`
 	} `json:"body"`
 }
 
@@ -234,7 +235,7 @@ func (h *AttemptHandler) StartAttempt(ctx context.Context, input *StartAttemptIn
 		Body: struct {
 			Success bool            `json:"success"`
 			Message string          `json:"message"`
-			Attempt *models.Attempt `json:"attempt,omitempty"`
+			Attempt *tables.Attempt `json:"attempt,omitempty"`
 		}{
 			Success: true,
 			Message: "Attempt started successfully",
@@ -280,7 +281,7 @@ func (h *AttemptHandler) FinishAttempt(ctx context.Context, input *FinishAttempt
 // Save Answer
 type SaveAnswerInput struct {
 	ID   int                         `path:"id" minimum:"1"`
-	Body models.AttemptAnswerRequest `json:"body"`
+	Body tables.AttemptAnswerRequest `json:"body"`
 }
 
 type SaveAnswerOutput struct {
@@ -296,7 +297,7 @@ func (h *AttemptHandler) SaveAnswer(ctx context.Context, input *SaveAnswerInput)
 		return nil, huma.Error401Unauthorized("Authentication required")
 	}
 
-	attemptQuestion := &models.AttemptQuestion{
+	attemptQuestion := &tables.AttemptQuestion{
 		AttemptID:  input.ID,
 		QuestionID: input.Body.QuestionID,
 		Answer:     input.Body.Answer,
@@ -325,7 +326,7 @@ type GetAttemptAnswersInput struct {
 }
 
 type GetAttemptAnswersOutput struct {
-	Body []models.AttemptQuestion `json:"body"`
+	Body []tables.AttemptQuestion `json:"body"`
 }
 
 func (h *AttemptHandler) GetAttemptAnswers(ctx context.Context, input *GetAttemptAnswersInput) (*GetAttemptAnswersOutput, error) {
@@ -344,8 +345,8 @@ func (h *AttemptHandler) GetAttemptAnswers(ctx context.Context, input *GetAttemp
 
 // Update Attempt Score
 type UpdateAttemptScoreInput struct {
-	ID   int                    `path:"id" minimum:"1"`
-	Body models.ScoringRequest `json:"body"`
+	ID   int                   `path:"id" minimum:"1"`
+	Body tables.ScoringRequest `json:"body"`
 }
 
 type UpdateAttemptScoreOutput struct {
@@ -397,7 +398,7 @@ type GetDeliveryResultsInput struct {
 }
 
 type GetDeliveryResultsOutput struct {
-	Body models.PaginatedResponse `json:"body"`
+	Body tables.PaginatedResponse `json:"body"`
 }
 
 func (h *AttemptHandler) GetDeliveryResults(ctx context.Context, input *GetDeliveryResultsInput) (*GetDeliveryResultsOutput, error) {
@@ -418,7 +419,7 @@ func (h *AttemptHandler) GetDeliveryResults(ctx context.Context, input *GetDeliv
 		return nil, huma.Error403Forbidden("Admin role required")
 	}
 
-	pagination := models.Pagination{
+	pagination := tables.Pagination{
 		Page:    input.Page,
 		PerPage: input.PerPage,
 	}

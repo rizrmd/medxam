@@ -68,7 +68,6 @@ export function DetailedResultsView() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">Result - IoNbEc</h1>
             <p className="text-muted-foreground">{group.name}</p>
           </div>
         </div>

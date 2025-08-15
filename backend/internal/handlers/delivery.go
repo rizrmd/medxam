@@ -2,20 +2,21 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"time"
+
+	"github.com/medxamion/medxamion/internal/models"
+	"github.com/medxamion/medxamion/internal/tables"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/medxamion/medxamion/internal/middleware"
-	"github.com/medxamion/medxamion/internal/models"
-	"github.com/medxamion/medxamion/internal/repository"
 )
 
 type DeliveryHandler struct {
-	deliveryRepo *repository.DeliveryRepository
+	deliveryRepo *models.DeliveryModel
 }
 
-func NewDeliveryHandler(deliveryRepo *repository.DeliveryRepository) *DeliveryHandler {
+func NewDeliveryHandler(deliveryRepo *models.DeliveryModel) *DeliveryHandler {
 	return &DeliveryHandler{deliveryRepo: deliveryRepo}
 }
 
@@ -81,6 +82,26 @@ func (h *DeliveryHandler) Register(api huma.API) {
 	}, h.DeleteDelivery)
 
 	huma.Register(api, huma.Operation{
+		OperationID: "get-participant-progress",
+		Method:      http.MethodGet,
+		Path:        "/api/deliveries/{id}/participant-progress",
+		Summary:     "Get participant progress",
+		Description: "Get real-time progress of all participants in a delivery.",
+		Tags:        []string{"Deliveries"},
+		Security:    []map[string][]string{{"session": {}}},
+	}, h.GetParticipantProgress)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "start-delivery",
+		Method:      http.MethodPost,
+		Path:        "/api/deliveries/{id}/start",
+		Summary:     "Start delivery manually",
+		Description: "Manually start a delivery that has automatic_start set to false.",
+		Tags:        []string{"Deliveries"},
+		Security:    []map[string][]string{{"session": {}}},
+	}, h.StartDelivery)
+
+	huma.Register(api, huma.Operation{
 		OperationID: "finish-delivery",
 		Method:      http.MethodPost,
 		Path:        "/api/deliveries/{id}/finish",
@@ -109,7 +130,7 @@ type ListDeliveriesInput struct {
 }
 
 type ListDeliveriesOutput struct {
-	Body models.PaginatedResponse `json:"body"`
+	Body tables.PaginatedResponse `json:"body"`
 }
 
 func (h *DeliveryHandler) ListDeliveries(ctx context.Context, input *ListDeliveriesInput) (*ListDeliveriesOutput, error) {
@@ -131,7 +152,7 @@ func (h *DeliveryHandler) ListDeliveries(ctx context.Context, input *ListDeliver
 	startDate, endDate := GetDateRangeFromFilter(dateFilter)
 
 	// Build search request
-	search := models.DeliverySearchRequest{
+	search := tables.DeliverySearchRequest{
 		Name:      input.Name,
 		Status:    input.Status,
 		StartDate: startDate,
@@ -164,7 +185,7 @@ type GetDeliveryInput struct {
 }
 
 type GetDeliveryOutput struct {
-	Body *models.Delivery `json:"body"`
+	Body *tables.Delivery `json:"body"`
 }
 
 func (h *DeliveryHandler) GetDelivery(ctx context.Context, input *GetDeliveryInput) (*GetDeliveryOutput, error) {
@@ -187,7 +208,7 @@ type GetDeliveryWithDetailsInput struct {
 }
 
 type GetDeliveryWithDetailsOutput struct {
-	Body *models.DeliveryWithDetails `json:"body"`
+	Body *tables.DeliveryWithDetails `json:"body"`
 }
 
 func (h *DeliveryHandler) GetDeliveryWithDetails(ctx context.Context, input *GetDeliveryWithDetailsInput) (*GetDeliveryWithDetailsOutput, error) {
@@ -206,14 +227,14 @@ func (h *DeliveryHandler) GetDeliveryWithDetails(ctx context.Context, input *Get
 
 // Create Delivery
 type CreateDeliveryInput struct {
-	Body models.DeliveryCreateRequest `json:"body"`
+	Body tables.DeliveryCreateRequest `json:"body"`
 }
 
 type CreateDeliveryOutput struct {
 	Body struct {
-		Success  bool              `json:"success"`
-		Message  string            `json:"message"`
-		Delivery *models.Delivery `json:"delivery,omitempty"`
+		Success  bool             `json:"success"`
+		Message  string           `json:"message"`
+		Delivery *tables.Delivery `json:"delivery,omitempty"`
 	} `json:"body"`
 }
 
@@ -235,7 +256,7 @@ func (h *DeliveryHandler) CreateDelivery(ctx context.Context, input *CreateDeliv
 		return nil, huma.Error403Forbidden("Admin role required")
 	}
 
-	delivery := &models.Delivery{
+	delivery := &tables.Delivery{
 		ExamID:         input.Body.ExamID,
 		GroupID:        input.Body.GroupID,
 		Name:           input.Body.Name,
@@ -253,9 +274,9 @@ func (h *DeliveryHandler) CreateDelivery(ctx context.Context, input *CreateDeliv
 
 	return &CreateDeliveryOutput{
 		Body: struct {
-			Success  bool              `json:"success"`
-			Message  string            `json:"message"`
-			Delivery *models.Delivery `json:"delivery,omitempty"`
+			Success  bool             `json:"success"`
+			Message  string           `json:"message"`
+			Delivery *tables.Delivery `json:"delivery,omitempty"`
 		}{
 			Success:  true,
 			Message:  "Delivery created successfully",
@@ -267,14 +288,14 @@ func (h *DeliveryHandler) CreateDelivery(ctx context.Context, input *CreateDeliv
 // Update Delivery
 type UpdateDeliveryInput struct {
 	ID   int                          `path:"id" minimum:"1"`
-	Body models.DeliveryUpdateRequest `json:"body"`
+	Body tables.DeliveryUpdateRequest `json:"body"`
 }
 
 type UpdateDeliveryOutput struct {
 	Body struct {
-		Success  bool              `json:"success"`
-		Message  string            `json:"message"`
-		Delivery *models.Delivery `json:"delivery,omitempty"`
+		Success  bool             `json:"success"`
+		Message  string           `json:"message"`
+		Delivery *tables.Delivery `json:"delivery,omitempty"`
 	} `json:"body"`
 }
 
@@ -303,9 +324,9 @@ func (h *DeliveryHandler) UpdateDelivery(ctx context.Context, input *UpdateDeliv
 
 	return &UpdateDeliveryOutput{
 		Body: struct {
-			Success  bool              `json:"success"`
-			Message  string            `json:"message"`
-			Delivery *models.Delivery `json:"delivery,omitempty"`
+			Success  bool             `json:"success"`
+			Message  string           `json:"message"`
+			Delivery *tables.Delivery `json:"delivery,omitempty"`
 		}{
 			Success:  true,
 			Message:  "Delivery updated successfully",
@@ -356,6 +377,64 @@ func (h *DeliveryHandler) DeleteDelivery(ctx context.Context, input *DeleteDeliv
 		}{
 			Success: true,
 			Message: "Delivery deleted successfully",
+		},
+	}, nil
+}
+
+// Start Delivery
+type StartDeliveryInput struct {
+	ID int `path:"id" minimum:"1"`
+}
+
+type StartDeliveryOutput struct {
+	Body struct {
+		Success bool   `json:"success"`
+		Message string `json:"message"`
+	} `json:"body"`
+}
+
+func (h *DeliveryHandler) StartDelivery(ctx context.Context, input *StartDeliveryInput) (*StartDeliveryOutput, error) {
+	sessionData := middleware.GetSessionDataFromContext(ctx)
+	if sessionData == nil {
+		return nil, huma.Error401Unauthorized("Authentication required")
+	}
+
+	// Check admin role
+	hasAdminRole := false
+	for _, role := range sessionData.Roles {
+		if role.Name == "administrator" {
+			hasAdminRole = true
+			break
+		}
+	}
+	if !hasAdminRole {
+		return nil, huma.Error403Forbidden("Admin role required")
+	}
+
+	// Get delivery to check if it's manual start
+	delivery, err := h.deliveryRepo.GetByID(input.ID)
+	if err != nil {
+		return nil, huma.Error404NotFound("Delivery not found")
+	}
+
+	// Check if delivery is set for manual start
+	if delivery.AutomaticStart {
+		return nil, huma.Error400BadRequest("This delivery is configured for automatic start")
+	}
+
+	// Update delivery to mark it as started
+	err = h.deliveryRepo.StartDelivery(input.ID)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to start delivery", err)
+	}
+
+	return &StartDeliveryOutput{
+		Body: struct {
+			Success bool   `json:"success"`
+			Message string `json:"message"`
+		}{
+			Success: true,
+			Message: "Delivery started successfully",
 		},
 	}, nil
 }
@@ -414,7 +493,7 @@ type GetDeliveryAttemptsInput struct {
 }
 
 type GetDeliveryAttemptsOutput struct {
-	Body models.PaginatedResponse `json:"body"`
+	Body tables.PaginatedResponse `json:"body"`
 }
 
 func (h *DeliveryHandler) GetDeliveryAttempts(ctx context.Context, input *GetDeliveryAttemptsInput) (*GetDeliveryAttemptsOutput, error) {
@@ -423,7 +502,7 @@ func (h *DeliveryHandler) GetDeliveryAttempts(ctx context.Context, input *GetDel
 		return nil, huma.Error401Unauthorized("Authentication required")
 	}
 
-	pagination := models.Pagination{
+	pagination := tables.Pagination{
 		Page:    input.Page,
 		PerPage: input.PerPage,
 	}
@@ -434,4 +513,133 @@ func (h *DeliveryHandler) GetDeliveryAttempts(ctx context.Context, input *GetDel
 	}
 
 	return &GetDeliveryAttemptsOutput{Body: *result}, nil
+}
+
+// Get Participant Progress
+type GetParticipantProgressInput struct {
+	ID int `path:"id" minimum:"1"`
+}
+
+type ParticipantProgress struct {
+	Participant struct {
+		ID         int    `json:"id"`
+		Name       string `json:"name"`
+		Email      string `json:"email"`
+		Identifier string `json:"identifier"`
+	} `json:"participant"`
+	Attempt *struct {
+		ID                int        `json:"id"`
+		StartedAt         *time.Time `json:"started_at"`
+		EndedAt           *time.Time `json:"ended_at"`
+		LastActivity      *time.Time `json:"last_activity"`
+		QuestionsAnswered int        `json:"questions_answered"`
+		TotalQuestions    int        `json:"total_questions"`
+		Status            string     `json:"status"` // not_started, in_progress, completed, abandoned
+	} `json:"attempt"`
+}
+
+type GetParticipantProgressOutput struct {
+	Body struct {
+		Delivery struct {
+			ID               int    `json:"id"`
+			Name             string `json:"name"`
+			DisplayName      string `json:"display_name"`
+			ParticipantCount int    `json:"participant_count"`
+			CompletedCount   int    `json:"completed_count"`
+			InProgressCount  int    `json:"in_progress_count"`
+		} `json:"delivery"`
+		Participants []ParticipantProgress `json:"participants"`
+	} `json:"body"`
+}
+
+func (h *DeliveryHandler) GetParticipantProgress(ctx context.Context, input *GetParticipantProgressInput) (*GetParticipantProgressOutput, error) {
+	sessionData := middleware.GetSessionDataFromContext(ctx)
+	if sessionData == nil {
+		return nil, huma.Error401Unauthorized("Authentication required")
+	}
+
+	// Get delivery details
+	delivery, err := h.deliveryRepo.GetByID(input.ID)
+	if err != nil {
+		return nil, huma.Error404NotFound("Delivery not found")
+	}
+
+	// Get participant progress data
+	progressData, err := h.deliveryRepo.GetParticipantProgress(input.ID)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to get participant progress", err)
+	}
+
+	// Convert to typed struct and calculate stats
+	var participantProgress []ParticipantProgress
+	var completedCount, inProgressCount int
+
+	for _, data := range progressData {
+		progressMap := data.(map[string]interface{})
+
+		var progress ParticipantProgress
+
+		// Extract participant data
+		if participant, ok := progressMap["participant"].(map[string]interface{}); ok {
+			progress.Participant.ID = participant["id"].(int)
+			progress.Participant.Name = participant["name"].(string)
+			progress.Participant.Email = participant["email"].(string)
+			progress.Participant.Identifier = participant["identifier"].(string)
+		}
+
+		// Extract attempt data if exists
+		if attemptData, ok := progressMap["attempt"].(map[string]interface{}); ok {
+			attempt := &struct {
+				ID                int        `json:"id"`
+				StartedAt         *time.Time `json:"started_at"`
+				EndedAt           *time.Time `json:"ended_at"`
+				LastActivity      *time.Time `json:"last_activity"`
+				QuestionsAnswered int        `json:"questions_answered"`
+				TotalQuestions    int        `json:"total_questions"`
+				Status            string     `json:"status"`
+			}{}
+
+			attempt.ID = attemptData["id"].(int)
+			attempt.QuestionsAnswered = attemptData["questions_answered"].(int)
+			attempt.TotalQuestions = attemptData["total_questions"].(int)
+			attempt.Status = attemptData["status"].(string)
+
+			if startedAt, ok := attemptData["started_at"].(time.Time); ok {
+				attempt.StartedAt = &startedAt
+			}
+			if endedAt, ok := attemptData["ended_at"].(time.Time); ok {
+				attempt.EndedAt = &endedAt
+			}
+			if lastActivity, ok := attemptData["last_activity"].(time.Time); ok {
+				attempt.LastActivity = &lastActivity
+			}
+
+			progress.Attempt = attempt
+
+			// Count stats
+			switch attempt.Status {
+			case "completed":
+				completedCount++
+			case "in_progress":
+				inProgressCount++
+			}
+		}
+
+		participantProgress = append(participantProgress, progress)
+	}
+
+	output := &GetParticipantProgressOutput{}
+	output.Body.Delivery.ID = delivery.ID
+	if delivery.Name != nil {
+		output.Body.Delivery.Name = *delivery.Name
+	}
+	if delivery.DisplayName != nil {
+		output.Body.Delivery.DisplayName = *delivery.DisplayName
+	}
+	output.Body.Delivery.ParticipantCount = len(participantProgress)
+	output.Body.Delivery.CompletedCount = completedCount
+	output.Body.Delivery.InProgressCount = inProgressCount
+	output.Body.Participants = participantProgress
+
+	return output, nil
 }

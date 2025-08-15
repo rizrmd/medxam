@@ -1,6 +1,7 @@
 import { useLocalStateSync } from '@/hooks/useLocalState'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -20,7 +21,6 @@ export function UserProfileSettings() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">My Profile - IoNbEc</h1>
         <div className="flex gap-2">
           <Button variant="outline">
             <Calendar className="h-4 w-4 mr-2" />
@@ -102,27 +102,24 @@ export function UserProfileSettings() {
                     <h3 className="text-lg font-medium">Change Password</h3>
                     <div className="space-y-2">
                       <Label htmlFor="currentPassword">Current Password</Label>
-                      <Input
+                      <PasswordInput
                         id="currentPassword"
-                        type="password"
                         value={state.currentPassword}
                         onChange={(e) => setState.currentPassword = e.target.value}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="newPassword">New Password</Label>
-                      <Input
+                      <PasswordInput
                         id="newPassword"
-                        type="password"
                         value={state.newPassword}
                         onChange={(e) => setState.newPassword = e.target.value}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                      <Input
+                      <PasswordInput
                         id="confirmPassword"
-                        type="password"
                         value={state.confirmPassword}
                         onChange={(e) => setState.confirmPassword = e.target.value}
                       />

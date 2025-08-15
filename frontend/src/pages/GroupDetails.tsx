@@ -26,7 +26,7 @@ import { useParticipantStore } from '@/store/participantStore'
 
 export function GroupDetails() {
   const { id } = useParams<{ id: string }>()
-  const searchCandidateInput = useFastInput('')
+  const searchParticipantInput = useFastInput('')
   const searchNameEmailInput = useFastInput('')
   const { groups } = useParticipantStore()
 
@@ -36,9 +36,9 @@ export function GroupDetails() {
   }, [])
 
   const handleClear = useCallback(() => {
-    searchCandidateInput.setValue('')
+    searchParticipantInput.setValue('')
     searchNameEmailInput.setValue('')
-  }, [searchCandidateInput, searchNameEmailInput])
+  }, [searchParticipantInput, searchNameEmailInput])
 
   const group = groups.find(g => g.id === id)
 
@@ -93,7 +93,6 @@ export function GroupDetails() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">Authoring Group - IoNbEc</h1>
             <p className="text-muted-foreground">{group.name} ({group.code})</p>
           </div>
         </div>
@@ -103,7 +102,7 @@ export function GroupDetails() {
         <CardContent>
           <Tabs defaultValue="candidates" className="w-full">
             <TabsList>
-              <TabsTrigger value="candidates">Candidates</TabsTrigger>
+              <TabsTrigger value="candidates">Participants</TabsTrigger>
               <TabsTrigger value="deliveries">Deliveries</TabsTrigger>
               <TabsTrigger value="results">Results</TabsTrigger>
             </TabsList>
@@ -111,8 +110,8 @@ export function GroupDetails() {
             <TabsContent value="candidates" className="space-y-6">
               <form onSubmit={handleSearch} className="flex gap-4">
                 <Input
-                  placeholder="Search Candidate"
-                  {...searchCandidateInput.inputProps}
+                  placeholder="Search Participant"
+                  {...searchParticipantInput.inputProps}
                   className="flex-1"
                 />
                 <Input

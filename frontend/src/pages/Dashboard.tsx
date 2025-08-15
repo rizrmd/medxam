@@ -10,28 +10,44 @@ import {
   FileQuestion,
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  ClipboardCheck,
+  Award
 } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useLocalState } from '@/hooks/useLocalState'
 import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
+import { useAuthStore } from '@/store/authStore'
 
 interface DashboardStats {
   deliveries: number
   exams: number
-  candidates: number
+  participants: number
   categories: number
 }
 
 export function Dashboard() {
   const navigate = useNavigate()
+  const { user } = useAuthStore()
   const [state, setState] = useLocalState({
     stats: null as DashboardStats | null,
     deliveries: [] as any[],
+    myDeliveries: [] as any[],
     loading: true,
     error: null as string | null
   })
+  
+  // Check user roles
+  const hasAdminRole = user?.roles?.some(role => 
+    role.name === 'Administrator' || role.name === 'administrator'
+  )
+  
+  const hasCommitteeRole = user?.roles?.some(role => 
+    role.name === 'Scorer / Committee' || role.name === 'scorer'
+  )
+  
+  const isCommitteeOnly = hasCommitteeRole && !hasAdminRole
 
   useEffect(() => {
     fetchDashboardData()
@@ -42,31 +58,40 @@ export function Dashboard() {
     setState.error = null
     
     try {
-      // Fetch all data in parallel
-      const [deliveriesRes, examsRes, takersRes, categoriesRes] = await Promise.all([
-        apiClient.deliveries.list(),
-        apiClient.exams.list(),
-        apiClient.takers.list(),
-        apiClient.categories.list()
-      ])
+      if (isCommitteeOnly) {
+        // For committee/scorer users, only fetch their assigned deliveries
+        const myDeliveriesRes = await apiClient.myDeliveries()
+        
+        if (!myDeliveriesRes.error) {
+          setState.myDeliveries = myDeliveriesRes.data || []
+        }
+      } else {
+        // For admin users, fetch all data in parallel
+        const [deliveriesRes, examsRes, takersRes, categoriesRes] = await Promise.all([
+          apiClient.deliveries.list(),
+          apiClient.exams.list(),
+          apiClient.participants.list(),
+          apiClient.categories.list()
+        ])
 
-      // Process stats - handle paginated responses
-      const statsData: DashboardStats = {
-        deliveries: (deliveriesRes as any).data?.total || (deliveriesRes as any).data?.length || 0,
-        exams: (examsRes as any).data?.total || (examsRes as any).data?.length || 0,
-        candidates: (takersRes as any).data?.total || (takersRes as any).data?.length || 0,
-        categories: (categoriesRes as any).data?.total || (categoriesRes as any).data?.length || 0
-      }
-      setState.stats = statsData
+        // Process stats - handle paginated responses
+        const statsData: DashboardStats = {
+          deliveries: (deliveriesRes as any).data?.total || (deliveriesRes as any).data?.length || 0,
+          exams: (examsRes as any).data?.total || (examsRes as any).data?.length || 0,
+          participants: (takersRes as any).data?.total || (takersRes as any).data?.length || 0,
+          categories: (categoriesRes as any).data?.total || (categoriesRes as any).data?.length || 0
+        }
+        setState.stats = statsData
 
-      // Set recent deliveries (last 4) - handle paginated response
-      if ((deliveriesRes as any).data) {
-        const deliveryData = (deliveriesRes as any).data.data || (deliveriesRes as any).data
-        if (Array.isArray(deliveryData)) {
-          const sortedDeliveries = deliveryData
-            .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            .slice(0, 4)
-          setState.deliveries = sortedDeliveries
+        // Set recent deliveries (last 4) - handle paginated response
+        if ((deliveriesRes as any).data) {
+          const deliveryData = (deliveriesRes as any).data.data || (deliveriesRes as any).data
+          if (Array.isArray(deliveryData)) {
+            const sortedDeliveries = deliveryData
+              .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              .slice(0, 4)
+            setState.deliveries = sortedDeliveries
+          }
         }
       }
     } catch (err) {
@@ -80,14 +105,14 @@ export function Dashboard() {
   const statsCards = state.stats ? [
     { title: 'Total Deliveries', value: state.stats.deliveries.toString(), icon: Package },
     { title: 'Active Exams', value: state.stats.exams.toString(), icon: FileText },
-    { title: 'Total Candidates', value: state.stats.candidates.toString(), icon: UserCheck },
+    { title: 'Total Participants', value: state.stats.participants.toString(), icon: UserCheck },
     { title: 'Question Categories', value: state.stats.categories.toString(), icon: FileQuestion },
   ] : []
 
   const quickActions = [
     { label: 'New Delivery', path: '/back-office/delivery?modal_create=1', variant: 'default' as const },
     { label: 'New Group', path: '/back-office/group?modal_create=1', variant: 'secondary' as const },
-    { label: 'Register Candidate', path: '/back-office/test-taker?modal_create=1', variant: 'secondary' as const },
+    { label: 'Register Participant', path: '/back-office/participants?modal_create=1', variant: 'secondary' as const },
     { label: 'New Test', path: '/back-office/test?modal_create=1', variant: 'secondary' as const },
     { label: 'New Question Category', path: '/back-office/category?modal_create=1', variant: 'secondary' as const },
     { label: 'New Question Set', path: '/back-office/question-set?modal_create=1', variant: 'secondary' as const },
@@ -133,11 +158,115 @@ export function Dashboard() {
     return <ErrorMessage error={state.error} onRetry={fetchDashboardData} />
   }
 
+  // Committee/Scorer only view
+  if (isCommitteeOnly) {
+    return (
+      <div className="space-y-6">
+        {/* Page Header */}
+        <div>
+          <p className="text-muted-foreground">Welcome, {user?.name}</p>
+          <p className="text-sm text-gray-600">Committee & Scorer Dashboard</p>
+        </div>
+
+        {/* Committee Stats */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">My Deliveries</CardTitle>
+              <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{state.myDeliveries.length}</div>
+              <p className="text-xs text-muted-foreground">Assigned deliveries</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Exams</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {state.myDeliveries.filter((d: any) => d.delivery?.last_status === 'running').length}
+              </div>
+              <p className="text-xs text-muted-foreground">Currently running</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pending Scoring</CardTitle>
+              <Award className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {state.myDeliveries.filter((d: any) => d.delivery?.is_finished).length}
+              </div>
+              <p className="text-xs text-muted-foreground">Ready for scoring</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions for Committee */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 md:grid-cols-2">
+              <Button onClick={() => navigate('/committee/deliveries')} className="w-full">
+                <ClipboardCheck className="mr-2 h-4 w-4" />
+                View My Deliveries
+              </Button>
+              <Button onClick={() => navigate('/back-office/scoring')} variant="outline" className="w-full">
+                <Award className="mr-2 h-4 w-4" />
+                Scoring Dashboard
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Assigned Deliveries */}
+        <Card>
+          <CardHeader>
+            <CardTitle>My Recent Deliveries</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {state.myDeliveries.length === 0 ? (
+              <p className="text-muted-foreground">No deliveries assigned to you</p>
+            ) : (
+              <div className="space-y-2">
+                {state.myDeliveries.slice(0, 4).map((assignment: any) => (
+                  <div key={assignment.delivery?.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium">{assignment.delivery?.name}</p>
+                      <p className="text-sm text-gray-600">
+                        Scheduled: {formatShortDate(assignment.delivery?.scheduled_at)}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigate('/committee/deliveries')}
+                    >
+                      View
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Admin view
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold">Dashboard - IoNbEc</h1>
         <p className="text-muted-foreground">Welcome to the examination management system</p>
       </div>
 

@@ -132,14 +132,27 @@ class ApiClient {
     create: (data: any) => this.post('/deliveries', data),
     update: (id: string, data: any) => this.put(`/deliveries/${id}`, data),
     delete: (id: string) => this.delete(`/deliveries/${id}`),
+    getAssignments: (id: string) => this.get(`/deliveries/${id}/assignments`),
+    assignCommittee: (id: string, userIds: number[]) => 
+      this.post(`/deliveries/${id}/assign-committee`, { user_ids: userIds }),
+    assignScorers: (id: string, userIds: number[]) => 
+      this.post(`/deliveries/${id}/assign-scorers`, { user_ids: userIds }),
+    control: (id: string, action: string) => 
+      this.post(`/deliveries/${id}/control`, { action }),
+    getParticipantProgress: (id: string) =>
+      this.get(`/deliveries/${id}/participant-progress`),
   }
 
-  takers = {
-    list: () => this.get('/takers'),
-    get: (id: string) => this.get(`/takers/${id}`),
-    create: (data: any) => this.post('/takers', data),
-    update: (id: string, data: any) => this.put(`/takers/${id}`, data),
-    delete: (id: string) => this.delete(`/takers/${id}`),
+  participants = {
+    list: () => this.get('/participants'),
+    get: (id: string) => this.get(`/participants/${id}`),
+    create: (data: any) => this.post('/participants', data),
+    update: (id: string, data: any) => this.put(`/participants/${id}`, data),
+    delete: (id: string) => this.delete(`/participants/${id}`),
+    login: (registrationNumber: string, password: string) => 
+      this.post('/participant/login', { registration_number: registrationNumber, password }),
+    loginWithTestCode: (testCode: string) => 
+      this.post('/participant/login-testcode', { test_code: testCode }),
   }
 
   attempts = {
@@ -159,6 +172,10 @@ class ApiClient {
   }
 
   health = () => this.get('/health')
+  
+  // Committee/Scorer endpoints
+  myDeliveries = (role?: string) => this.get(`/my-deliveries${role ? `?role=${role}` : ''}`)
+  getScorerUsers = () => this.get('/users/scorer')
 }
 
 export const apiClient = new ApiClient()

@@ -4,17 +4,18 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/medxamion/medxamion/internal/models"
+	"github.com/medxamion/medxamion/internal/tables"
+
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/medxamion/medxamion/internal/middleware"
-	"github.com/medxamion/medxamion/internal/models"
-	"github.com/medxamion/medxamion/internal/repository"
 )
 
 type ExamHandler struct {
-	examRepo *repository.ExamRepository
+	examRepo *models.ExamModel
 }
 
-func NewExamHandler(examRepo *repository.ExamRepository) *ExamHandler {
+func NewExamHandler(examRepo *models.ExamModel) *ExamHandler {
 	return &ExamHandler{examRepo: examRepo}
 }
 
@@ -119,7 +120,7 @@ type ListExamsInput struct {
 }
 
 type ListExamsOutput struct {
-	Body models.PaginatedResponse `json:"body"`
+	Body tables.PaginatedResponse `json:"body"`
 }
 
 func (h *ExamHandler) ListExams(ctx context.Context, input *ListExamsInput) (*ListExamsOutput, error) {
@@ -128,12 +129,12 @@ func (h *ExamHandler) ListExams(ctx context.Context, input *ListExamsInput) (*Li
 		return nil, huma.Error401Unauthorized("Authentication required")
 	}
 
-	pagination := models.Pagination{
+	pagination := tables.Pagination{
 		Page:    input.Page,
 		PerPage: input.PerPage,
 	}
 
-	search := models.ExamSearchRequest{
+	search := tables.ExamSearchRequest{
 		Code: input.Code,
 		Name: input.Name,
 	}
@@ -152,7 +153,7 @@ type GetExamInput struct {
 }
 
 type GetExamOutput struct {
-	Body *models.Exam `json:"body"`
+	Body *tables.Exam `json:"body"`
 }
 
 func (h *ExamHandler) GetExam(ctx context.Context, input *GetExamInput) (*GetExamOutput, error) {
@@ -171,14 +172,14 @@ func (h *ExamHandler) GetExam(ctx context.Context, input *GetExamInput) (*GetExa
 
 // Create Exam
 type CreateExamInput struct {
-	Body models.ExamCreateRequest `json:"body"`
+	Body tables.ExamCreateRequest `json:"body"`
 }
 
 type CreateExamOutput struct {
 	Body struct {
 		Success bool         `json:"success"`
 		Message string       `json:"message"`
-		Exam    *models.Exam `json:"exam,omitempty"`
+		Exam    *tables.Exam `json:"exam,omitempty"`
 	} `json:"body"`
 }
 
@@ -200,7 +201,7 @@ func (h *ExamHandler) CreateExam(ctx context.Context, input *CreateExamInput) (*
 		return nil, huma.Error403Forbidden("Admin role required")
 	}
 
-	exam := &models.Exam{
+	exam := &tables.Exam{
 		Code:        input.Body.Code,
 		Name:        input.Body.Name,
 		Description: input.Body.Description,
@@ -219,7 +220,7 @@ func (h *ExamHandler) CreateExam(ctx context.Context, input *CreateExamInput) (*
 		Body: struct {
 			Success bool         `json:"success"`
 			Message string       `json:"message"`
-			Exam    *models.Exam `json:"exam,omitempty"`
+			Exam    *tables.Exam `json:"exam,omitempty"`
 		}{
 			Success: true,
 			Message: "Exam created successfully",
@@ -231,14 +232,14 @@ func (h *ExamHandler) CreateExam(ctx context.Context, input *CreateExamInput) (*
 // Update Exam
 type UpdateExamInput struct {
 	ID   int                      `path:"id" minimum:"1"`
-	Body models.ExamUpdateRequest `json:"body"`
+	Body tables.ExamUpdateRequest `json:"body"`
 }
 
 type UpdateExamOutput struct {
 	Body struct {
 		Success bool         `json:"success"`
 		Message string       `json:"message"`
-		Exam    *models.Exam `json:"exam,omitempty"`
+		Exam    *tables.Exam `json:"exam,omitempty"`
 	} `json:"body"`
 }
 
@@ -269,7 +270,7 @@ func (h *ExamHandler) UpdateExam(ctx context.Context, input *UpdateExamInput) (*
 		Body: struct {
 			Success bool         `json:"success"`
 			Message string       `json:"message"`
-			Exam    *models.Exam `json:"exam,omitempty"`
+			Exam    *tables.Exam `json:"exam,omitempty"`
 		}{
 			Success: true,
 			Message: "Exam updated successfully",
@@ -332,7 +333,7 @@ type GetExamItemsInput struct {
 }
 
 type GetExamItemsOutput struct {
-	Body models.PaginatedResponse `json:"body"`
+	Body tables.PaginatedResponse `json:"body"`
 }
 
 func (h *ExamHandler) GetExamItems(ctx context.Context, input *GetExamItemsInput) (*GetExamItemsOutput, error) {
@@ -341,7 +342,7 @@ func (h *ExamHandler) GetExamItems(ctx context.Context, input *GetExamItemsInput
 		return nil, huma.Error401Unauthorized("Authentication required")
 	}
 
-	pagination := models.Pagination{
+	pagination := tables.Pagination{
 		Page:    input.Page,
 		PerPage: input.PerPage,
 	}
