@@ -313,7 +313,7 @@ export function QuestionScoring() {
             <div>
               <CardTitle className="text-xl">{state.attemptDetails.delivery.name}</CardTitle>
               <p className="text-muted-foreground mt-1">
-                {state.attemptDetails.participant.identifier} • {state.attemptDetails.participant.name}
+                Test Code: {state.attemptDetails.participant.identifier || 'NO CODE'}
               </p>
               <p className="text-sm text-muted-foreground">
                 Started: {format(new Date(state.attemptDetails.started_at), 'MMM dd, yyyy HH:mm')}

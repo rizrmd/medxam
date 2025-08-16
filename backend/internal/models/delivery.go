@@ -573,19 +573,13 @@ func (r *DeliveryModel) GetDeliveryAttempts(deliveryID int, pagination tables.Pa
 		if participant.TakerRegNull.Valid {
 			takerReg = participant.TakerRegNull.String
 		}
-		
-		takerEmail := ""
-		if participant.TakerEmail.Valid {
-			takerEmail = participant.TakerEmail.String
-		}
 
-		// Build the response structure
+		// Build the response structure - exclude name and email for anonymity
 		result := map[string]interface{}{
 			"taker": map[string]interface{}{
-				"id":    participant.TakerID,
-				"name":  participant.TakerName,
-				"code":  takerReg,
-				"email": takerEmail,
+				"id":   participant.TakerID,
+				"code": takerReg,
+				// Name and email excluded for scorer anonymity
 			},
 		}
 

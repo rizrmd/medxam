@@ -139,8 +139,7 @@ export function ScoringDetails() {
     const searchTerm = searchTermInput.getValue().toLowerCase()
     return (
       (attempt.participant.identifier?.toLowerCase() || '').includes(searchTerm) ||
-      (attempt.participant.email?.toLowerCase() || '').includes(searchTerm) ||
-      (attempt.participant.name?.toLowerCase() || '').includes(searchTerm)
+      (attempt.taker?.code?.toLowerCase() || '').includes(searchTerm)
     )
   })
 
@@ -294,7 +293,7 @@ export function ScoringDetails() {
         <CardContent>
           <form onSubmit={handleSearch} className="flex gap-4">
             <Input
-              placeholder="Search Code or Email"
+              placeholder="Search Test Code"
               {...searchTermInput.inputProps}
               className="flex-1"
             />
@@ -346,7 +345,7 @@ export function ScoringDetails() {
                     <TableCell>{(currentPage - 1) * 15 + index + 1}</TableCell>
                     <TableCell>
                       <div className="font-medium">
-                        {attempt.participant?.identifier || attempt.participant?.name || 'UNKNOWN'}
+                        {attempt.participant?.identifier || attempt.taker?.code || attempt.taker?.id || 'NO CODE'}
                       </div>
                     </TableCell>
                     <TableCell>
