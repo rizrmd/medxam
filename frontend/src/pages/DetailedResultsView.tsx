@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/table'
 import { ArrowLeft, Search } from 'lucide-react'
 import { useParticipantStore } from '@/store/participantStore'
+import { MainContent } from '@/components/layout/MainContent'
 
 export function DetailedResultsView() {
   const { id } = useParams<{ id: string }>()
@@ -45,21 +46,24 @@ export function DetailedResultsView() {
 
   if (!group) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Link to="/back-office/result">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold">Group Not Found</h1>
+      <MainContent>
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <Link to="/back-office/result">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+            <h1 className="text-3xl font-bold">Group Not Found</h1>
+          </div>
         </div>
-      </div>
+      </MainContent>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link to="/back-office/result">
@@ -178,6 +182,7 @@ export function DetailedResultsView() {
         <Button variant="default" size="sm">1</Button>
         <Button variant="outline" size="sm">Next</Button>
       </div>
-    </div>
+      </div>
+    </MainContent>
   )
 }

@@ -18,7 +18,7 @@ import { useLocalStateSync } from '@/hooks/useLocalState'
 import { useFastInput } from '@/hooks/useFastInput'
 import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
-import { useHeaderActions } from '@/hooks/useHeaderActions'
+import { MainContent } from '@/components/layout/MainContent'
 
 export function ExamManagement() {
   const searchCodeInput = useFastInput('')
@@ -135,11 +135,19 @@ export function ExamManagement() {
   }
 
   if (state.loading) {
-    return <Loading message="Loading exams..." />
+    return (
+      <MainContent>
+        <Loading message="Loading exams..." />
+      </MainContent>
+    )
   }
 
   if (state.error) {
-    return <ErrorMessage error={state.error} onRetry={fetchExams} />
+    return (
+      <MainContent>
+        <ErrorMessage error={state.error} onRetry={fetchExams} />
+      </MainContent>
+    )
   }
 
   const headerActions = (
@@ -148,11 +156,10 @@ export function ExamManagement() {
       Exam
     </Button>
   )
-  
-  useHeaderActions(headerActions)
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
 
       <Card>
         <CardContent className="pt-6">
@@ -283,6 +290,7 @@ export function ExamManagement() {
         onOpenChange={(open) => setState.showCreateForm = open}
         onSubmit={handleCreateExam}
       />
-    </div>
+      </div>
+    </MainContent>
   )
 }

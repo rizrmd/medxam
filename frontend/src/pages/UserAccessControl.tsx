@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Shield, Edit, Trash2, Plus, Search, User } from 'lucide-react'
+import { MainContent } from '@/components/layout/MainContent'
 
 interface User {
   id: string
@@ -81,7 +82,8 @@ export function UserAccessControl() {
   }
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
       <div className="flex justify-between items-center">
         <Button>
           <Plus className="h-4 w-4 mr-2" />
@@ -232,6 +234,7 @@ export function UserAccessControl() {
         ))}
         <Button variant="outline" size="sm">Next</Button>
       </div>
-    </div>
+      </div>
+    </MainContent>
   )
 }

@@ -30,7 +30,7 @@ import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
 import { DateFilterAdvanced, getDateFilterRange } from '@/components/ui/date-filter-advanced'
 import type { DateFilterValue } from '@/components/ui/date-filter-advanced'
-import { useHeaderActions } from '@/hooks/useHeaderActions'
+import { MainContent } from '@/components/layout/MainContent'
 
 interface DeliveryFormData {
   name: string
@@ -320,11 +320,19 @@ export function DeliveryManagement() {
   }
 
   if (state.loading && state.deliveries.length === 0) {
-    return <Loading message="Loading deliveries..." />
+    return (
+      <MainContent>
+        <Loading message="Loading deliveries..." />
+      </MainContent>
+    )
   }
 
   if (state.error && state.deliveries.length === 0) {
-    return <ErrorMessage error={state.error} onRetry={fetchDeliveries} />
+    return (
+      <MainContent>
+        <ErrorMessage error={state.error} onRetry={fetchDeliveries} />
+      </MainContent>
+    )
   }
 
   const headerActions = (
@@ -333,11 +341,10 @@ export function DeliveryManagement() {
       Delivery
     </Button>
   )
-  
-  useHeaderActions(headerActions)
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
 
       <Card>
         <CardContent className="pt-6">
@@ -656,6 +663,7 @@ export function DeliveryManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </MainContent>
   )
 }

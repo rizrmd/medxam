@@ -28,6 +28,7 @@ import {
   Search
 } from 'lucide-react'
 import { useExamStore } from '@/store/examStore'
+import { MainContent } from '@/components/layout/MainContent'
 
 export function QuestionSetDetails() {
   const { id } = useParams<{ id: string }>()
@@ -98,47 +99,56 @@ export function QuestionSetDetails() {
   const questions = state.questions.length > 0 ? state.questions : []
 
   if (state.loading) {
-    return <Loading message="Loading question set..." />
+    return (
+      <MainContent>
+        <Loading message="Loading question set..." />
+      </MainContent>
+    )
   }
 
   if (state.error) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Link to="/back-office/question-set">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold">Error Loading Question Set</h1>
-            <p className="text-muted-foreground mt-2">{state.error}</p>
-            <Button onClick={() => fetchQuestionSet(id!)} className="mt-4">
-              Retry
-            </Button>
+      <MainContent>
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <Link to="/back-office/question-set">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-bold">Error Loading Question Set</h1>
+              <p className="text-muted-foreground mt-2">{state.error}</p>
+              <Button onClick={() => fetchQuestionSet(id!)} className="mt-4">
+                Retry
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </MainContent>
     )
   }
 
   if (!questionSet) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Link to="/back-office/question-set">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold">Question Set Not Found</h1>
+      <MainContent>
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <Link to="/back-office/question-set">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+            <h1 className="text-3xl font-bold">Question Set Not Found</h1>
+          </div>
         </div>
-      </div>
+      </MainContent>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link to="/back-office/question-set">
@@ -353,6 +363,7 @@ export function QuestionSetDetails() {
           </Tabs>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </MainContent>
   )
 }

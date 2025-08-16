@@ -22,9 +22,9 @@ import { formatShortDate } from '@/lib/date-utils'
 import { apiClient } from '@/lib/api'
 import { useLocalStateSync } from '@/hooks/useLocalState'
 import { useFastInput } from '@/hooks/useFastInput'
-import { useHeaderActions } from '@/hooks/useHeaderActions'
 import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
+import { MainContent } from '@/components/layout/MainContent'
 
 export function ParticipantManagement() {
   const searchInput = useFastInput('')
@@ -87,11 +87,19 @@ export function ParticipantManagement() {
   }
 
   if (state.loading) {
-    return <Loading message="Loading participants..." />
+    return (
+      <MainContent>
+        <Loading message="Loading participants..." />
+      </MainContent>
+    )
   }
 
   if (state.error) {
-    return <ErrorMessage error={state.error} onRetry={fetchData} />
+    return (
+      <MainContent>
+        <ErrorMessage error={state.error} onRetry={fetchData} />
+      </MainContent>
+    )
   }
 
   const handleSearch = useCallback((e?: React.FormEvent) => {
@@ -117,11 +125,10 @@ export function ParticipantManagement() {
       Participant
     </Button>
   )
-  
-  useHeaderActions(headerActions)
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
 
       <Card>
         <CardContent className="pt-6">
@@ -245,6 +252,7 @@ export function ParticipantManagement() {
         ))}
         <Button variant="outline" size="sm">Next</Button>
       </div>
-    </div>
+      </div>
+    </MainContent>
   )
 }

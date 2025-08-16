@@ -19,6 +19,7 @@ import { useLocalState } from '@/hooks/useLocalState'
 import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
 import { useAuthStore } from '@/store/authStore'
+import { MainContent } from '@/components/layout/MainContent'
 
 interface DashboardStats {
   deliveries: number
@@ -151,17 +152,26 @@ export function Dashboard() {
   }
 
   if (state.loading) {
-    return <Loading message="Loading dashboard data..." />
+    return (
+      <MainContent>
+        <Loading message="Loading dashboard data..." />
+      </MainContent>
+    )
   }
 
   if (state.error) {
-    return <ErrorMessage error={state.error} onRetry={fetchDashboardData} />
+    return (
+      <MainContent>
+        <ErrorMessage error={state.error} onRetry={fetchDashboardData} />
+      </MainContent>
+    )
   }
 
   // Committee/Scorer only view
   if (isCommitteeOnly) {
     return (
-      <div className="space-y-6">
+      <MainContent>
+        <div className="space-y-6">
         {/* Page Header */}
         <div>
           <p className="text-muted-foreground">Welcome, {user?.name}</p>
@@ -258,13 +268,15 @@ export function Dashboard() {
             )}
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </MainContent>
     )
   }
 
   // Admin view
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
       {/* Page Header */}
       <div>
         <p className="text-muted-foreground">Welcome to the examination management system</p>
@@ -346,6 +358,7 @@ export function Dashboard() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </MainContent>
   )
 }

@@ -37,5 +37,8 @@
     "orthopaedic"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.2"
+  }
 }

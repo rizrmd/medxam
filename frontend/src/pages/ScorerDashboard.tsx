@@ -18,6 +18,7 @@ import {
   ArrowLeft
 } from 'lucide-react'
 import { apiClient } from '@/lib/api'
+import { MainContent } from '@/components/layout/MainContent'
 
 interface ParticipantResult {
   id: number
@@ -153,17 +154,20 @@ export function ScorerDashboard() {
 
   if (state.isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Loading results...</p>
+      <MainContent>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p>Loading results...</p>
+          </div>
         </div>
-      </div>
+      </MainContent>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <MainContent>
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -364,6 +368,7 @@ export function ScorerDashboard() {
           </div>
         </div>
       </main>
-    </div>
+      </div>
+    </MainContent>
   )
 }

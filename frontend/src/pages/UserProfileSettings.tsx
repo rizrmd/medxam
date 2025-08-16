@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuthStore } from '@/store/authStore'
 import { Save, Calendar, User } from 'lucide-react'
+import { MainContent } from '@/components/layout/MainContent'
 
 export function UserProfileSettings() {
   const { user } = useAuthStore()
@@ -19,7 +20,8 @@ export function UserProfileSettings() {
   })
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex gap-2">
           <Button variant="outline">
@@ -223,6 +225,7 @@ export function UserProfileSettings() {
           </Card>
         </div>
       </div>
-    </div>
+      </div>
+    </MainContent>
   )
 }

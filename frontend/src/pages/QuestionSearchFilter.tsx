@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select'
 import { Search, FileQuestion } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { MainContent } from '@/components/layout/MainContent'
 
 export function QuestionSearchFilter() {
   const searchInput = useFastInput('')
@@ -172,7 +173,8 @@ export function QuestionSearchFilter() {
   const totalPages = Math.ceil(filteredQuestions.length / state.itemsPerPage)
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
       <div className="flex justify-between items-center">
       </div>
 
@@ -379,6 +381,7 @@ export function QuestionSearchFilter() {
           </Button>
         </div>
       )}
-    </div>
+      </div>
+    </MainContent>
   )
 }

@@ -1,9 +1,10 @@
 import { useFastInput } from '@/hooks/useFastInput'
-import { useCallback } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useCallback, useEffect } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -17,93 +18,275 @@ import {
   Search,
   Download,
   CheckCircle,
-  Clock,
-  AlertCircle
+  AlertCircle,
+  Edit
 } from 'lucide-react'
-import { useExamStore } from '@/store/examStore'
+import { useState } from 'react'
+import { apiClient } from '@/lib/api'
+import { format } from 'date-fns'
+import { MainContent } from '@/components/layout/MainContent'
+
+interface AttemptForScoring {
+  id: number
+  participant: {
+    id: number
+    name: string
+    email: string
+    identifier: string
+  }
+  attempt: {
+    id: number
+    started_at: string
+    ended_at?: string
+    questions_answered: number
+    total_questions: number
+    status: 'not_started' | 'in_progress' | 'completed' | 'abandoned'
+    score?: number
+  }
+}
+
+interface DeliveryInfo {
+  id: number
+  name: string
+  scheduled_at: string
+  duration: number
+  status: string
+}
 
 export function ScoringDetails() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const searchTermInput = useFastInput('')
-  const { deliveries } = useExamStore()
+  
+  const [delivery, setDelivery] = useState<DeliveryInfo | null>(null)
+  const [attempts, setAttempts] = useState<AttemptForScoring[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+
+  const fetchDeliveryInfo = useCallback(async () => {
+    if (!id) return
+    
+    try {
+      const response = await apiClient.deliveries.get(id)
+      if (response.error) {
+        setError(response.error)
+      } else {
+        setDelivery(response.data)
+      }
+    } catch (error) {
+      setError('Failed to load delivery information')
+      console.error('Error loading delivery:', error)
+    }
+  }, [id])
+
+  const fetchAttempts = useCallback(async () => {
+    if (!id) return
+    
+    try {
+      setLoading(true)
+      const response = await apiClient.scoring.getDeliveryAttempts(id, currentPage)
+      
+      if (response.error) {
+        setError(response.error)
+        setAttempts([])
+      } else {
+        // Transform backend response to expected format
+        const transformedAttempts = (response.data?.data || []).map((item: any) => ({
+          id: item.id,
+          participant: {
+            id: item.attempted_by,
+            name: item.taker?.name || 'Unknown',
+            identifier: item.taker?.code || '',
+            email: item.taker?.email || ''
+          },
+          attempt: {
+            id: item.id,
+            started_at: item.started_at,
+            ended_at: item.ended_at,
+            questions_answered: item.progress || 0,
+            total_questions: item.total_questions || 0,
+            status: item.ended_at ? 'completed' : (item.started_at ? 'in_progress' : 'not_started'),
+            score: item.score
+          }
+        }))
+        setAttempts(transformedAttempts)
+        setTotalPages(response.data?.pagination?.total_pages || 1)
+        setError('')
+      }
+    } catch (error) {
+      setError('Failed to load participant attempts')
+      setAttempts([])
+      console.error('Error loading attempts:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [id, currentPage])
 
   const handleSearch = useCallback((e?: React.FormEvent) => {
     e?.preventDefault()
-    // Search is handled locally in this component
-  }, [])
+    fetchAttempts()
+  }, [fetchAttempts])
 
   const handleClear = useCallback(() => {
     searchTermInput.setValue('')
-  }, [searchTermInput])
+    fetchAttempts()
+  }, [searchTermInput, fetchAttempts])
 
-  const delivery = deliveries.find(d => d.id === id)
+  const filteredAttempts = attempts.filter(attempt => {
+    if (!attempt?.participant) return false
+    const searchTerm = searchTermInput.getValue().toLowerCase()
+    return (
+      (attempt.participant.identifier?.toLowerCase() || '').includes(searchTerm) ||
+      (attempt.participant.email?.toLowerCase() || '').includes(searchTerm) ||
+      (attempt.participant.name?.toLowerCase() || '').includes(searchTerm)
+    )
+  })
 
-  // Mock scoring data
-  const scoringData = [
-    {
-      id: 'score_1',
-      participantCode: 'REG00001',
-      progress: 100,
-      attemptedAt: '2025-08-02 14:30:00',
-      scoringStatus: 'completed',
-      score: 85,
-      totalScore: 100,
-      email: 'candidate1@example.com'
-    }
-  ]
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case 'in-progress':
-        return <Clock className="h-4 w-4 text-orange-500" />
-      case 'pending':
-        return <AlertCircle className="h-4 w-4 text-blue-500" />
-      default:
-        return null
-    }
+  const getProgressPercentage = (answered: number, total: number) => {
+    if (total === 0) return 0
+    return Math.round((answered / total) * 100)
   }
 
-  const getStatusBadge = (status: string) => {
-    const colors = {
-      completed: 'bg-green-100 text-green-800',
-      'in-progress': 'bg-orange-100 text-orange-800',
-      pending: 'bg-blue-100 text-blue-800',
+  useEffect(() => {
+    if (id) {
+      fetchDeliveryInfo()
     }
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+
+  useEffect(() => {
+    if (id) {
+      fetchAttempts()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, currentPage])
+
+  // Header actions
+  const headerActions = (
+    <Link to="/back-office/scoring">
+      <Button variant="ghost" size="sm" className="flex items-center gap-2">
+        <ArrowLeft className="h-4 w-4" />
+        Back to Scoring
+      </Button>
+    </Link>
+  )
+
+  if (loading && !delivery) {
+    return (
+      <MainContent>
+        <div className="space-y-6">
+          <div className="flex items-center justify-center min-h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p>Loading scoring details...</p>
+            </div>
+          </div>
+        </div>
+      </MainContent>
+    )
+  }
+
+  if (error && !delivery) {
+    return (
+      <MainContent>
+        <div className="space-y-6">
+          <div className="flex items-center justify-center min-h-64">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <p className="text-red-600 mb-4">{error}</p>
+              <Button onClick={() => { fetchDeliveryInfo(); fetchAttempts(); }}>
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      </MainContent>
+    )
   }
 
   if (!delivery) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Link to="/back-office/scoring">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold">Delivery Not Found</h1>
+      <MainContent>
+        <div className="space-y-6">
+          <div className="flex items-center justify-center min-h-64">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-gray-500 mx-auto mb-4" />
+              <p className="text-gray-600">Delivery not found</p>
+              <Link to="/back-office/scoring">
+                <Button className="mt-4">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Scoring
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
-      </div>
+      </MainContent>
     )
   }
 
+  // Calculate stats
+  const totalAttempts = filteredAttempts.length
+  const scoringCount = filteredAttempts.filter(a => a.attempt?.status === 'completed').length
+  const totalQuestions = 100 // This should come from exam data
+
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
+      {/* Header with Back Button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link to="/back-office/scoring">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate('/back-office/scoring')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <div>
-            <p className="text-muted-foreground">{delivery.name}</p>
+            <h1 className="text-2xl font-semibold">Scoring Detail</h1>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+              <span className="font-medium">Test Agustus</span>
+              <span>•</span>
+              <span>BE 210525 - MCQ - BE 210525 - MCQ</span>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Stats Cards */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold">{scoringCount}</div>
+              <div className="text-sm text-muted-foreground mt-1">Scoring</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold">{totalAttempts}</div>
+              <div className="text-sm text-muted-foreground mt-1">Takers</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold">{totalQuestions}</div>
+              <div className="text-sm text-muted-foreground mt-1">Question</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search and Filter */}
       <Card>
         <CardHeader>
           <CardTitle>Search & Filter</CardTitle>
@@ -126,6 +309,7 @@ export function ScoringDetails() {
         </CardContent>
       </Card>
 
+      {/* Attempts Table */}
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -137,95 +321,137 @@ export function ScoringDetails() {
                 <TableHead>ATTEMPTED AT</TableHead>
                 <TableHead>STATUS SCORING</TableHead>
                 <TableHead>SCORE</TableHead>
-                <TableHead>download</TableHead>
+                <TableHead className="text-right">ACTIONS</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {scoringData.map((item, index) => (
-                <TableRow key={item.id}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-mono text-sm">{item.participantCode}</p>
-                      <p className="text-xs text-muted-foreground">{item.email}</p>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+                      Loading participants...
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-green-500 h-2 rounded-full" 
-                          style={{ width: `${item.progress}%` }}
-                        />
-                      </div>
-                      <span className="text-sm">{item.progress}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {new Date(item.attemptedAt).toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(item.scoringStatus)}
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(item.scoringStatus)}`}>
-                        {item.scoringStatus}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-center">
-                      <div className="text-lg font-bold">{item.score}</div>
-                      <div className="text-xs text-muted-foreground">/ {item.totalScore}</div>
-                      <div className="text-xs font-medium">
-                        {Math.round((item.score / item.totalScore) * 100)}%
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon">
-                      <Download className="h-4 w-4" />
-                    </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : filteredAttempts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No participant attempts found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredAttempts.map((attempt, index) => (
+                  <TableRow key={attempt.id}>
+                    <TableCell>{(currentPage - 1) * 15 + index + 1}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">
+                        {attempt.participant?.identifier || attempt.participant?.name || 'UNKNOWN'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-medium">
+                          {getProgressPercentage(attempt.attempt?.questions_answered || 0, attempt.attempt?.total_questions || 0)}%
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          ({attempt.attempt?.questions_answered || 0}/{attempt.attempt?.total_questions || 0})
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {attempt.attempt?.started_at ? (
+                        <div className="text-sm">
+                          {format(new Date(attempt.attempt.started_at), 'MMM dd, yyyy HH:mm')}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Not started</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={attempt.attempt?.score !== undefined && attempt.attempt?.score !== null ? "default" : "secondary"}
+                        className="font-normal"
+                      >
+                        {attempt.attempt?.score !== undefined && attempt.attempt?.score !== null ? (
+                          <>
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Scored
+                          </>
+                        ) : (
+                          <>
+                            <AlertCircle className="h-3 w-3 mr-1 text-yellow-600" />
+                            Not finished yet
+                          </>
+                        )}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">
+                        {attempt.attempt?.score !== undefined ? attempt.attempt.score : 'Not scored'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="Download results"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => navigate(`/back-office/scoring/${id}/attempt/${attempt.attempt?.id || attempt.id}`)}
+                          title="Edit scoring"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
-      {/* Summary Stats */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Scoring Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">1</div>
-              <div className="text-sm text-muted-foreground">Total Attempts</div>
-            </div>
-            <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-green-600">1</div>
-              <div className="text-sm text-muted-foreground">Completed</div>
-            </div>
-            <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-orange-600">0</div>
-              <div className="text-sm text-muted-foreground">In Progress</div>
-            </div>
-            <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">85%</div>
-              <div className="text-sm text-muted-foreground">Average Score</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Pagination */}
-      <div className="flex items-center justify-center gap-2">
-        <Button variant="outline" size="sm">Previous</Button>
-        <Button variant="default" size="sm">1</Button>
-        <Button variant="outline" size="sm">Next</Button>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            disabled={currentPage <= 1}
+            onClick={() => setCurrentPage(currentPage - 1)}
+          >
+            Previous
+          </Button>
+          {Array.from({ length: Math.min(10, totalPages) }, (_, i) => i + 1).map((page) => (
+            <Button
+              key={page}
+              variant={page === currentPage ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCurrentPage(page)}
+            >
+              {page}
+            </Button>
+          ))}
+          <Button 
+            variant="outline" 
+            size="sm"
+            disabled={currentPage >= totalPages}
+            onClick={() => setCurrentPage(currentPage + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      )}
       </div>
-    </div>
+    </MainContent>
   )
 }

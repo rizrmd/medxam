@@ -4,7 +4,6 @@ import { useFastInput } from '@/hooks/useFastInput'
 import { apiClient } from '@/lib/api'
 import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
-import { useHeaderActions } from '@/hooks/useHeaderActions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -36,6 +35,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { FileQuestion, Edit, Trash2, Plus, Search, CheckCircle, XCircle, Eye } from 'lucide-react'
 import { useExamStore } from '@/store/examStore'
 import { useNavigate } from 'react-router-dom'
+import { MainContent } from '@/components/layout/MainContent'
 
 export function QuestionSets() {
   const searchTitleInput = useFastInput('')
@@ -220,11 +220,19 @@ export function QuestionSets() {
   }
 
   if (state.loading) {
-    return <Loading message="Loading question sets..." />
+    return (
+      <MainContent>
+        <Loading message="Loading question sets..." />
+      </MainContent>
+    )
   }
 
   if (state.error) {
-    return <ErrorMessage error={state.error} onRetry={fetchQuestionSets} />
+    return (
+      <MainContent>
+        <ErrorMessage error={state.error} onRetry={fetchQuestionSets} />
+      </MainContent>
+    )
   }
 
   // Paginate the filtered results
@@ -239,11 +247,10 @@ export function QuestionSets() {
       Question Set
     </Button>
   )
-  
-  useHeaderActions(headerActions)
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
 
       <Card>
         <CardContent className="pt-6">
@@ -599,6 +606,7 @@ export function QuestionSets() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </MainContent>
   )
 }

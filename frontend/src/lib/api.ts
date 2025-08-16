@@ -158,8 +158,12 @@ class ApiClient {
   attempts = {
     list: () => this.get('/attempts'),
     get: (id: string) => this.get(`/attempts/${id}`),
+    getDetails: (id: string) => this.get(`/attempts/${id}/details`),
+    getAnswers: (id: string) => this.get(`/attempts/${id}/answers`),
     create: (data: any) => this.post('/attempts', data),
     update: (id: string, data: any) => this.put(`/attempts/${id}`, data),
+    updateScore: (id: string, score: number, penalty?: number) => 
+      this.put(`/attempts/${id}/score`, { score, penalty }),
     delete: (id: string) => this.delete(`/attempts/${id}`),
   }
 
@@ -176,6 +180,18 @@ class ApiClient {
   // Committee/Scorer endpoints
   myDeliveries = (role?: string) => this.get(`/my-deliveries${role ? `?role=${role}` : ''}`)
   getScorerUsers = () => this.get('/users/scorer')
+
+  // Scoring endpoints
+  scoring = {
+    getDeliveries: (page = 1, perPage = 15) => 
+      this.get(`/deliveries?page=${page}&per_page=${perPage}`),
+    getDeliveryAttempts: (deliveryId: string, page = 1, perPage = 15) => 
+      this.get(`/deliveries/${deliveryId}/attempts?page=${page}&per_page=${perPage}`),
+    getDeliveryResults: (deliveryId: string, page = 1, perPage = 15) => 
+      this.get(`/deliveries/${deliveryId}/results?page=${page}&per_page=${perPage}`),
+    getParticipantProgress: (deliveryId: string) => 
+      this.get(`/deliveries/${deliveryId}/live-progress`),
+  }
 }
 
 export const apiClient = new ApiClient()

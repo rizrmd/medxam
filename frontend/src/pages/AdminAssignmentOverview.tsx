@@ -17,6 +17,7 @@ import {
   StopCircle
 } from 'lucide-react'
 import { apiClient } from '@/lib/api'
+import { MainContent } from '@/components/layout/MainContent'
 
 interface DeliveryAssignment {
   delivery: {
@@ -143,31 +144,34 @@ export function AdminAssignmentOverview() {
 
   if (state.isLoading) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Assignment Overview</h1>
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Loading assignment data...</p>
+      <MainContent>
+        <div className="space-y-6">
+          <h1 className="text-3xl font-bold">Assignment Overview</h1>
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p>Loading assignment data...</p>
+          </div>
         </div>
-      </div>
+      </MainContent>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Assignment Overview</h1>
-          <p className="text-gray-600">Overview of committee and scorer assignments across all deliveries</p>
+    <MainContent>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Assignment Overview</h1>
+            <p className="text-gray-600">Overview of committee and scorer assignments across all deliveries</p>
+          </div>
+          <Link to="/back-office/committee-scorers">
+            <Button>
+              <UserCheck className="w-4 h-4 mr-2" />
+              Manage Users
+            </Button>
+          </Link>
         </div>
-        <Link to="/back-office/committee-scorers">
-          <Button>
-            <UserCheck className="w-4 h-4 mr-2" />
-            Manage Users
-          </Button>
-        </Link>
-      </div>
 
       {/* Error Display */}
       {state.error && (
@@ -331,6 +335,7 @@ export function AdminAssignmentOverview() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </MainContent>
   )
 }

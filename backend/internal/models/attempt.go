@@ -262,28 +262,25 @@ func (r *AttemptModel) GetAttemptsByDelivery(deliveryID int, pagination tables.P
 func (r *AttemptModel) SaveAnswer(attemptQuestion *tables.AttemptQuestion) error {
 	// First try to update existing answer
 	updateQuery := `
-		UPDATE attempt_questions 
-		SET answer = $3, time_spent = $4, answered_at = NOW(), updated_at = NOW()
+		UPDATE attempt_question 
+		SET answer = $3, updated_at = NOW()
 		WHERE attempt_id = $1 AND question_id = $2
 		RETURNING id`
 
 	var id int
 	err := r.db.QueryRow(updateQuery, attemptQuestion.AttemptID, attemptQuestion.QuestionID,
-		attemptQuestion.Answer, attemptQuestion.TimeSpent).Scan(&id)
+		attemptQuestion.Answer).Scan(&id)
 
 	if err == sql.ErrNoRows {
 		// Insert new answer
 		insertQuery := `
-			INSERT INTO attempt_questions (attempt_id, question_id, answer, time_spent, answered_at, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, NOW(), NOW(), NOW())
+			INSERT INTO attempt_question (attempt_id, question_id, answer, created_at, updated_at)
+			VALUES ($1, $2, $3, NOW(), NOW())
 			RETURNING id, created_at, updated_at`
 
-		now := time.Now()
 		err = r.db.QueryRow(insertQuery, attemptQuestion.AttemptID, attemptQuestion.QuestionID,
-			attemptQuestion.Answer, attemptQuestion.TimeSpent).Scan(
+			attemptQuestion.Answer).Scan(
 			&attemptQuestion.ID, &attemptQuestion.CreatedAt, &attemptQuestion.UpdatedAt)
-
-		attemptQuestion.AnsweredAt = &now
 	} else if err != nil {
 		return fmt.Errorf("failed to save answer: %w", err)
 	} else {
@@ -294,18 +291,44 @@ func (r *AttemptModel) SaveAnswer(attemptQuestion *tables.AttemptQuestion) error
 }
 
 func (r *AttemptModel) GetAttemptAnswers(attemptID int) ([]tables.AttemptQuestion, error) {
-	answers := []tables.AttemptQuestion{}
 	query := `
-		SELECT id, attempt_id, question_id, answer, score, is_correct, answered_at,
-			   time_spent, created_at, updated_at
-		FROM attempt_questions 
+		SELECT id, attempt_id, question_id, answer, score, is_correct,
+			   created_at, updated_at
+		FROM attempt_question 
 		WHERE attempt_id = $1
 		ORDER BY question_id`
 
-	err := r.db.Select(&answers, query, attemptID)
+	rows, err := r.db.Query(query, attemptID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get attempt answers: %w", err)
 	}
+	defer rows.Close()
+
+	var answers []tables.AttemptQuestion
+	for rows.Next() {
+		var aq tables.AttemptQuestion
+		err := rows.Scan(
+			&aq.ID,
+			&aq.AttemptID,
+			&aq.QuestionID,
+			&aq.Answer,
+			&aq.Score,
+			&aq.IsCorrect,
+			&aq.CreatedAt,
+			&aq.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan answer row: %w", err)
+		}
+		// Set TimeSpent to 0 since it doesn't exist in DB
+		aq.TimeSpent = 0
+		answers = append(answers, aq)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating answer rows: %w", err)
+	}
+
 	return answers, nil
 }
 
@@ -341,7 +364,7 @@ func (r *AttemptModel) GetResultsSummary(deliveryID int, pagination tables.Pagin
 		FROM attempts a
 		JOIN takers t ON a.attempted_by = t.id
 		JOIN exams e ON a.exam_id = e.id
-		LEFT JOIN attempt_questions aq ON a.id = aq.attempt_id
+		LEFT JOIN attempt_question aq ON a.id = aq.attempt_id
 		WHERE a.delivery_id = $1
 		GROUP BY a.id, t.reg, t.name, e.name, a.score, a.started_at, a.ended_at
 		ORDER BY a.created_at DESC

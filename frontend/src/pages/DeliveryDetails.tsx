@@ -14,6 +14,7 @@ import {
 import { apiClient } from '@/lib/api'
 import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
+import { MainContent } from '@/components/layout/MainContent'
 
 // Import modular components
 import { DeliveryBasicInfo } from '@/components/delivery/DeliveryBasicInfo'
@@ -110,31 +111,42 @@ export function DeliveryDetails() {
   }
 
   if (state.loading) {
-    return <Loading message="Loading delivery details..." />
+    return (
+      <MainContent>
+        <Loading message="Loading delivery details..." />
+      </MainContent>
+    )
   }
 
   if (state.error) {
-    return <ErrorMessage error={state.error} onRetry={fetchDelivery} />
+    return (
+      <MainContent>
+        <ErrorMessage error={state.error} onRetry={fetchDelivery} />
+      </MainContent>
+    )
   }
 
 
   if (!state.delivery) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Link to="/back-office/delivery">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold">Delivery Not Found</h1>
+      <MainContent>
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <Link to="/back-office/delivery">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+            <h1 className="text-3xl font-bold">Delivery Not Found</h1>
+          </div>
         </div>
-      </div>
+      </MainContent>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link to="/back-office/delivery">
@@ -298,6 +310,7 @@ export function DeliveryDetails() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </MainContent>
   )
 }

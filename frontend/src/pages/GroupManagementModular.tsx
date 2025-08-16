@@ -20,6 +20,7 @@ import { DataTable, type Column, Pagination } from '@/components/ui/data-table'
 // import { DateFilter, DateFilterValue } from '@/components/ui/date-filter'
 import { useFastInput } from '@/hooks/useFastInput'
 import { format } from 'date-fns'
+import { MainContent } from '@/components/layout/MainContent'
 
 interface Group {
   id: number
@@ -215,7 +216,8 @@ export function GroupManagementModular() {
   }
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
       <div className="flex justify-between items-center">
         <Button onClick={() => setShowCreateDialog(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -366,6 +368,7 @@ export function GroupManagementModular() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </MainContent>
   )
 }

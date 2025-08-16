@@ -19,6 +19,7 @@ import {
   Settings
 } from 'lucide-react'
 import { apiClient } from '@/lib/api'
+import { MainContent } from '@/components/layout/MainContent'
 
 interface User {
   id: number
@@ -138,20 +139,23 @@ export function CommitteeScorerManagement() {
 
   if (state.isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Committee & Scorer Management</h1>
+      <MainContent>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold">Committee & Scorer Management</h1>
+          </div>
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p>Loading users...</p>
+          </div>
         </div>
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Loading users...</p>
-        </div>
-      </div>
+      </MainContent>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -362,6 +366,7 @@ export function CommitteeScorerManagement() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainContent>
   )
 }

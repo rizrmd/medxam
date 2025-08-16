@@ -25,7 +25,6 @@ import { useNavigate } from 'react-router-dom'
 import { apiClient } from '@/lib/api'
 import { useLocalStateSync } from '@/hooks/useLocalState'
 import { useFastInput } from '@/hooks/useFastInput'
-import { useHeaderActions } from '@/hooks/useHeaderActions'
 import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
 
@@ -142,10 +141,9 @@ export function GroupManagement() {
       Group
     </Button>
   )
-  
-  useHeaderActions(headerActions)
 
   return (
+    <div className="space-y-6">
     <div className="space-y-6">
 
       <Card>
@@ -299,6 +297,7 @@ export function GroupManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
     </div>
   )
 }

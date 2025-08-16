@@ -14,6 +14,7 @@ import {
 import { ChartBar, Users, Eye, Search } from 'lucide-react'
 import { useParticipantStore } from '@/store/participantStore'
 import { useNavigate } from 'react-router-dom'
+import { MainContent } from '@/components/layout/MainContent'
 
 export function ResultsManagement() {
   const searchTermInput = useFastInput('')
@@ -29,13 +30,14 @@ export function ResultsManagement() {
     searchTermInput.setValue('')
   }, [searchTermInput])
 
-  const filteredGroups = groups.filter(group =>
+  const filteredGroups = (groups || []).filter(group =>
     group.name.toLowerCase().includes(searchTermInput.getValue().toLowerCase()) ||
     group.description.toLowerCase().includes(searchTermInput.getValue().toLowerCase())
   )
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
       <div className="flex justify-between items-center">
       </div>
 
@@ -121,6 +123,7 @@ export function ResultsManagement() {
         ))}
         <Button variant="outline" size="sm">Next</Button>
       </div>
-    </div>
+      </div>
+    </MainContent>
   )
 }

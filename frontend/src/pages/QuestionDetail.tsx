@@ -10,6 +10,7 @@ import { useLocalStateSync } from '@/hooks/useLocalState'
 import { apiClient } from '@/lib/api'
 import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
+import { MainContent } from '@/components/layout/MainContent'
 
 export function QuestionDetail() {
   const { id } = useParams<{ id: string }>()
@@ -68,34 +69,45 @@ export function QuestionDetail() {
   }
 
   if (state.loading) {
-    return <Loading message="Loading question..." />
+    return (
+      <MainContent>
+        <Loading message="Loading question..." />
+      </MainContent>
+    )
   }
 
   if (state.error) {
-    return <ErrorMessage error={state.error} onRetry={() => fetchQuestion(id!)} />
+    return (
+      <MainContent>
+        <ErrorMessage error={state.error} onRetry={() => fetchQuestion(id!)} />
+      </MainContent>
+    )
   }
 
   const question = state.question
 
   if (!question) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => navigate('/back-office/question-pack')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-3xl font-bold">Question Not Found</h1>
+      <MainContent>
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => navigate('/back-office/question-pack')}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-3xl font-bold">Question Not Found</h1>
+          </div>
         </div>
-      </div>
+      </MainContent>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -317,6 +329,7 @@ export function QuestionDetail() {
           </Card>
         </div>
       </div>
-    </div>
+      </div>
+    </MainContent>
   )
 }

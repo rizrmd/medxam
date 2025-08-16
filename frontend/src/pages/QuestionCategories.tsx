@@ -30,9 +30,9 @@ import { Tags, Edit, Trash2, Plus, Search } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useLocalStateSync } from '@/hooks/useLocalState'
 import { useFastInput } from '@/hooks/useFastInput'
-import { useHeaderActions } from '@/hooks/useHeaderActions'
 import { Loading } from '@/components/ui/loading'
 import { ErrorMessage } from '@/components/ui/error'
+import { MainContent } from '@/components/layout/MainContent'
 
 export function QuestionCategories() {
   const searchNameInput = useFastInput('')
@@ -128,11 +128,19 @@ export function QuestionCategories() {
   }
 
   if (state.loading) {
-    return <Loading message="Loading categories..." />
+    return (
+      <MainContent>
+        <Loading message="Loading categories..." />
+      </MainContent>
+    )
   }
 
   if (state.error) {
-    return <ErrorMessage error={state.error} onRetry={fetchCategories} />
+    return (
+      <MainContent>
+        <ErrorMessage error={state.error} onRetry={fetchCategories} />
+      </MainContent>
+    )
   }
 
   const filteredCategories = state.categories.filter(category => {
@@ -157,11 +165,10 @@ export function QuestionCategories() {
       Category
     </Button>
   )
-  
-  useHeaderActions(headerActions)
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
 
       <Card>
         <CardContent className="pt-6">
@@ -314,6 +321,7 @@ export function QuestionCategories() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </MainContent>
   )
 }

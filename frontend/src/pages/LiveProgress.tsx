@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { useLocalStateSync } from '@/hooks/useLocalState'
-import { useHeaderActions } from '@/hooks/useHeaderActions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -16,9 +15,11 @@ import {
   AlertCircle,
   RefreshCw,
   Wifi,
-  WifiOff
+  WifiOff,
+  Circle
 } from 'lucide-react'
 import { apiClient } from '@/lib/api'
+import { MainContent } from '@/components/layout/MainContent'
 
 interface ParticipantProgress {
   participant: {
@@ -178,7 +179,9 @@ export function LiveProgress() {
       case 'in_progress':
         return <Badge className="bg-blue-500 text-white">In Progress</Badge>
       case 'abandoned':
-        return <Badge className="bg-red-500 text-white">Abandoned</Badge>
+        return <Badge className="bg-red-500 text-white">
+          {!isDeliveryActive() ? 'Incomplete' : 'Abandoned'}
+        </Badge>
       default:
         return <Badge className="bg-gray-500 text-white">Not Started</Badge>
     }
@@ -205,76 +208,98 @@ export function LiveProgress() {
     return Math.round((answered / total) * 100)
   }
 
-  // Header actions for DashboardLayout - Set immediately to ensure they always appear
+  const isParticipantOnline = (lastActivity?: string) => {
+    if (!lastActivity) return false
+    const lastActivityTime = new Date(lastActivity).getTime()
+    const now = new Date().getTime()
+    const timeDiff = now - lastActivityTime
+    // Consider online if activity within last 2 minutes
+    return timeDiff < 2 * 60 * 1000
+  }
+
+  const isDeliveryActive = () => {
+    if (!state.deliveryInfo) return true // Assume active if no info yet
+    
+    const now = new Date()
+    const startDate = state.deliveryInfo.start_date ? new Date(state.deliveryInfo.start_date) : null
+    const endDate = state.deliveryInfo.end_date ? new Date(state.deliveryInfo.end_date) : null
+    
+    // Check if delivery hasn't started yet
+    if (startDate && now < startDate) return false
+    
+    // Check if delivery has ended
+    if (endDate && now > endDate) return false
+    
+    // Check delivery status
+    if (state.deliveryInfo.status === 'completed' || 
+        state.deliveryInfo.status === 'expired' || 
+        state.deliveryInfo.status === 'cancelled') {
+      return false
+    }
+    
+    return true
+  }
+
+  const getAdjustedStatus = (originalStatus: string) => {
+    // If delivery has ended, show all "in_progress" as "abandoned" or "incomplete"
+    if (!isDeliveryActive() && originalStatus === 'in_progress') {
+      return 'abandoned'
+    }
+    return originalStatus
+  }
+
+  // Header actions for DashboardLayout
   const headerActions = (
-    <>
-      <div className="flex items-center space-x-4 ml-4">
-        <div className="flex items-center space-x-2 text-sm">
-          {state.isConnected ? (
-            <>
-              <Wifi className="w-4 h-4 text-green-600" />
-              <span className="text-green-600">Live</span>
-            </>
-          ) : (
-            <>
-              <WifiOff className="w-4 h-4 text-red-600" />
-              <span className="text-red-600">Reconnecting...</span>
-            </>
-          )}
-        </div>
-        <div className="text-sm text-gray-600">
-          Updated: {state.lastUpdated.toLocaleTimeString()}
-        </div>
-      </div>
-    </>
+    <div className="flex items-center gap-3">
+      <Badge variant={state.isConnected ? 'default' : 'destructive'} className="font-normal">
+        {state.isConnected ? (
+          <><Wifi className="w-3 h-3 mr-1" /> Live</>
+        ) : (
+          <><WifiOff className="w-3 h-3 mr-1" /> Reconnecting...</>
+        )}
+      </Badge>
+      <span className="text-sm text-muted-foreground">
+        Last updated: {state.lastUpdated.toLocaleTimeString()}
+      </span>
+    </div>
   )
 
-  // Title with back button and delivery name - VERY OBVIOUS STYLING FOR DEBUG
+  // Title with back button and delivery name
   const titleWithBackButton = (
-    <div 
-      className="flex items-center gap-3 bg-red-500 text-white p-4 border-4 border-yellow-400" 
-      style={{ 
-        fontSize: '24px', 
-        fontWeight: 'bold',
-        minHeight: '60px',
-        zIndex: 9999,
-        position: 'relative'
-      }}
-    >
+    <div className="flex items-center gap-2">
       <Button
-        variant="default"
-        size="lg"
-        onClick={() => {
-          console.log('Back button clicked in header!')
-          navigate('/committee/deliveries')
-        }}
-        className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700 text-lg px-4 py-2"
+        variant="ghost"
+        size="sm"
+        onClick={() => navigate('/committee/deliveries')}
+        className="flex items-center gap-1 -ml-2"
       >
-        <ArrowLeft className="w-6 h-6" />
-        BACK BUTTON
+        <ArrowLeft className="w-4 h-4" />
+        Back
       </Button>
-      <span className="text-yellow-300 text-2xl">|</span>
-      <span className="text-2xl">
+      <span className="font-semibold">
         {state.deliveryInfo ? (
-          state.deliveryInfo.display_name || state.deliveryInfo.name
+          <>Live Progress: {state.deliveryInfo.display_name || state.deliveryInfo.name}</>
         ) : (
-          'LIVE PARTICIPANT PROGRESS - DEBUG'
+          'Live Participant Progress'
         )}
       </span>
     </div>
   )
 
-  // Set header actions and title - will update when deliveryInfo changes
-  useHeaderActions(headerActions, titleWithBackButton, [state.deliveryInfo])
+  // No longer need useSetDashboardHeader - will pass to MainLayout
 
   if (state.isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Loading participant progress...</p>
+      <MainContent>
+        <div className="space-y-6">
+          <div className="flex items-center justify-center min-h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p>Loading participant progress...</p>
+            </div>
+          </div>
         </div>
-      </div>
+      </MainContent>
     )
   }
 
@@ -286,7 +311,8 @@ export function LiveProgress() {
   }
 
   return (
-    <div className="p-6">
+    <MainContent>
+      <div className="space-y-6">
       {/* Error Display */}
       {state.error && (
         <div className="mb-6">
@@ -299,6 +325,26 @@ export function LiveProgress() {
                   <p className="text-sm text-red-600 mt-1">{state.error}</p>
                   <p className="text-sm text-red-600 mt-1">
                     This appears to be a backend configuration issue. The page layout and navigation are working correctly.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Delivery Status Alert */}
+      {!isDeliveryActive() && state.deliveryInfo && (
+        <div className="mb-6">
+          <Card className="border-orange-200 bg-orange-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-orange-600" />
+                <div>
+                  <p className="font-semibold text-orange-900">Delivery Has Ended</p>
+                  <p className="text-sm text-orange-700">
+                    This delivery has {state.deliveryInfo.status === 'expired' ? 'expired' : 'ended'}. 
+                    All participants who were still in progress are now marked as incomplete.
                   </p>
                 </div>
               </div>
@@ -360,61 +406,138 @@ export function LiveProgress() {
                 No participants assigned to this delivery
               </div>
             ) : (
-              <div className="space-y-4">
-                {state.participants.map((participant) => (
-                  <div key={participant.participant.id} className="border rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <User className="w-4 h-4 text-gray-400" />
-                          <span className="font-medium">{participant.participant.name}</span>
-                          {getStatusBadge(participant.attempt?.status || 'not_started')}
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          {participant.participant.email} • ID: {participant.participant.identifier}
-                        </div>
-                      </div>
-                      
-                      <div className="text-right">
-                        <div className="flex items-center space-x-1 text-sm text-gray-600">
-                          <Clock className="w-4 h-4" />
-                          <span>
-                            {participant.attempt?.started_at 
-                              ? calculateTimeSpent(participant.attempt.started_at, participant.attempt.ended_at)
-                              : 'Not started'}
-                          </span>
-                        </div>
-                        {participant.attempt?.last_activity && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            Last activity: {new Date(participant.attempt.last_activity).toLocaleTimeString()}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {state.participants.map((participant) => {
+                  const progress = participant.attempt 
+                    ? getProgressPercentage(participant.attempt.questions_answered, participant.attempt.total_questions)
+                    : 0;
+                  const rawStatus = participant.attempt?.status || 'not_started';
+                  const status = getAdjustedStatus(rawStatus);
+                  
+                  return (
+                    <Card 
+                      key={participant.participant.id} 
+                      className={`
+                        relative overflow-hidden transition-all duration-200 hover:shadow-lg
+                        ${status === 'completed' ? 'border-green-200 bg-green-50/30' : ''}
+                        ${status === 'in_progress' ? 'border-blue-200 bg-blue-50/30' : ''}
+                        ${status === 'abandoned' ? 'border-red-200 bg-red-50/30' : ''}
+                      `}
+                    >
+                      <CardContent className="p-5">
+                        {/* Header with name and status */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-start gap-3 flex-1">
+                            <div className="mt-0.5">
+                              <User className="w-5 h-5 text-gray-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold text-gray-900 truncate">
+                                  {participant.participant.name}
+                                </h3>
+                                {/* Connection status indicator */}
+                                <div className="flex items-center gap-1" title={
+                                  isParticipantOnline(participant.attempt?.last_activity) 
+                                    ? "Online" 
+                                    : participant.attempt?.last_activity 
+                                    ? "Disconnected" 
+                                    : "Not started"
+                                }>
+                                  <Circle 
+                                    className={`w-2 h-2 fill-current ${
+                                      !participant.attempt?.started_at ? 'text-gray-300' :
+                                      isParticipantOnline(participant.attempt?.last_activity) ? 'text-green-500' : 
+                                      'text-red-500'
+                                    }`}
+                                  />
+                                  <span className={`text-xs ${
+                                    !participant.attempt?.started_at ? 'text-gray-400' :
+                                    isParticipantOnline(participant.attempt?.last_activity) ? 'text-green-600' : 
+                                    'text-red-600'
+                                  }`}>
+                                    {!participant.attempt?.started_at ? 'Not started' :
+                                     isParticipantOnline(participant.attempt?.last_activity) ? 'Online' : 'Disconnected'}
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="text-sm text-gray-500 truncate">
+                                {participant.participant.email}
+                              </p>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {participant.attempt && participant.attempt.status !== 'not_started' && (
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-gray-600">
-                            Questions: {participant.attempt.questions_answered} / {participant.attempt.total_questions}
-                          </span>
-                          <span className="text-sm font-medium">
-                            {getProgressPercentage(participant.attempt.questions_answered, participant.attempt.total_questions)}%
-                          </span>
+                          {getStatusBadge(status)}
                         </div>
-                        <Progress 
-                          value={getProgressPercentage(participant.attempt.questions_answered, participant.attempt.total_questions)} 
-                          className="h-2"
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
+                        
+                        {/* Stats Grid */}
+                        <div className="space-y-3">
+                          {/* Identifier */}
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-500">ID</span>
+                            <span className="font-mono text-gray-700">
+                              {participant.participant.identifier}
+                            </span>
+                          </div>
+                          
+                          {/* Time spent */}
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-500 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              Time
+                            </span>
+                            <span className="text-gray-700">
+                              {participant.attempt?.started_at 
+                                ? calculateTimeSpent(participant.attempt.started_at, participant.attempt.ended_at)
+                                : 'Not started'}
+                            </span>
+                          </div>
+                          
+                          {/* Questions progress */}
+                          {participant.attempt && status !== 'not_started' && (
+                            <>
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-500">Questions</span>
+                                <span className="text-gray-700 font-medium">
+                                  {participant.attempt.questions_answered} / {participant.attempt.total_questions}
+                                </span>
+                              </div>
+                              
+                              {/* Progress bar */}
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-gray-500">Progress</span>
+                                  <span className="font-medium text-gray-700">{progress}%</span>
+                                </div>
+                                <Progress 
+                                  value={progress} 
+                                  className="h-2"
+                                />
+                              </div>
+                            </>
+                          )}
+                          
+                          {/* Last activity */}
+                          {participant.attempt?.last_activity && (
+                            <div className="pt-2 border-t border-gray-100">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-500">Last activity</span>
+                                <span className="text-gray-600">
+                                  {new Date(participant.attempt.last_activity).toLocaleTimeString()}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
               </div>
             )}
           </CardContent>
         </Card>
       </main>
-    </div>
+      </div>
+    </MainContent>
   )
 }

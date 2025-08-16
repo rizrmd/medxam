@@ -244,11 +244,16 @@ func (r *DeliveryModel) List(pagination tables.Pagination, search tables.Deliver
 			   d.is_anytime, d.automatic_start, d.is_finished, d.last_status, d.display_name,
 			   d.created_at, d.updated_at,
 			   e.code as exam_code, e.name as exam_name,
-			   g.name as group_name, g.code as group_code
+			   g.name as group_name, g.code as group_code,
+			   COALESCE(COUNT(dt.taker_id), 0) as participants_count
 		FROM deliveries d
 		JOIN exams e ON d.exam_id = e.id
 		JOIN groups g ON d.group_id = g.id
+		LEFT JOIN delivery_taker dt ON d.id = dt.delivery_id
 		%s 
+		GROUP BY d.id, d.exam_id, d.group_id, d.name, d.scheduled_at, d.duration, d.ended_at,
+			     d.is_anytime, d.automatic_start, d.is_finished, d.last_status, d.display_name,
+			     d.created_at, d.updated_at, e.code, e.name, g.name, g.code
 		ORDER BY d.scheduled_at DESC, d.created_at DESC
 		LIMIT %s OFFSET %s`, whereClause, limitParam, offsetParam)
 
@@ -257,10 +262,11 @@ func (r *DeliveryModel) List(pagination tables.Pagination, search tables.Deliver
 
 	type DeliveryWithInfo struct {
 		tables.Delivery
-		ExamCode  string `db:"exam_code" json:"exam_code"`
-		ExamName  string `db:"exam_name" json:"exam_name"`
-		GroupName string `db:"group_name" json:"group_name"`
-		GroupCode string `db:"group_code" json:"group_code"`
+		ExamCode          string `db:"exam_code" json:"exam_code"`
+		ExamName          string `db:"exam_name" json:"exam_name"`
+		GroupName         string `db:"group_name" json:"group_name"`
+		GroupCode         string `db:"group_code" json:"group_code"`
+		ParticipantsCount int    `db:"participants_count" json:"participants_count"`
 	}
 
 	deliveries := []DeliveryWithInfo{}

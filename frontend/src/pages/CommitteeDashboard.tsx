@@ -29,6 +29,7 @@ import {
   User
 } from 'lucide-react'
 import { apiClient } from '@/lib/api'
+import { MainContent } from '@/components/layout/MainContent'
 
 interface DeliveryAssignment {
   delivery: {
@@ -238,17 +239,20 @@ export function CommitteeDashboard() {
 
   if (state.isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Loading deliveries...</p>
+      <MainContent>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p>Loading deliveries...</p>
+          </div>
         </div>
-      </div>
+      </MainContent>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <MainContent>
+      <div className="space-y-6">
         {state.error && (
           <Card className="mb-6 border-red-200 bg-red-50">
             <CardContent className="pt-6">
@@ -512,6 +516,7 @@ export function CommitteeDashboard() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-    </div>
+      </div>
+    </MainContent>
   )
 }
