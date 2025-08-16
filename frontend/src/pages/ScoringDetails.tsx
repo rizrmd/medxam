@@ -397,7 +397,8 @@ export function ScoringDetails() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          title="Download results"
+                          disabled={!attempt.attempt?.id && !attempt.id}
+                          title={(!attempt.attempt?.id && !attempt.id) ? "No results to download" : "Download results"}
                         >
                           <Download className="h-4 w-4" />
                         </Button>
@@ -405,8 +406,14 @@ export function ScoringDetails() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => navigate(`/back-office/scoring/${id}/attempt/${attempt.attempt?.id || attempt.id}`)}
-                          title="Edit scoring"
+                          onClick={() => {
+                            const attemptId = attempt.attempt?.id || attempt.id
+                            if (attemptId) {
+                              navigate(`/back-office/scoring/${id}/attempt/${attemptId}`)
+                            }
+                          }}
+                          disabled={!attempt.attempt?.id && !attempt.id}
+                          title={(!attempt.attempt?.id && !attempt.id) ? "No attempt to score" : "Edit scoring"}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>

@@ -510,69 +510,135 @@ func (r *DeliveryModel) GetParticipantProgress(deliveryID int) ([]interface{}, e
 func (r *DeliveryModel) GetDeliveryAttempts(deliveryID int, pagination tables.Pagination) (*tables.PaginatedResponse, error) {
 	offset := (pagination.Page - 1) * pagination.PerPage
 
-	// Get total count
+	// Get total count of participants (not attempts)
 	countQuery := `
-		SELECT COUNT(*) 
-		FROM attempts a 
-		WHERE a.delivery_id = $1`
+		SELECT COUNT(DISTINCT dt.taker_id) 
+		FROM delivery_taker dt
+		WHERE dt.delivery_id = $1`
 	var total int
 	err := r.db.Get(&total, countQuery, deliveryID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total count: %w", err)
 	}
 
-	// Get attempts with taker info
+	// Get all participants with their attempt info (if exists)
 	query := `
-		SELECT a.id, a.attempted_by, a.exam_id, a.delivery_id, a.ip_address,
-			   a.started_at, a.ended_at, a.extra_minute, a.score, a.progress,
-			   a.penalty, a.created_at, a.updated_at, a.finish_scoring,
-			   t.name as taker_name, t.reg as taker_reg
-		FROM attempts a
-		JOIN takers t ON a.attempted_by = t.id
-		WHERE a.delivery_id = $1
-		ORDER BY a.created_at DESC
+		SELECT 
+			t.id as taker_id,
+			t.name as taker_name, 
+			t.reg as taker_reg,
+			t.email as taker_email,
+			a.id, a.attempted_by, a.exam_id, a.delivery_id, a.ip_address,
+			a.started_at, a.ended_at, a.extra_minute, a.score, a.progress,
+			a.penalty, a.created_at, a.updated_at, a.finish_scoring
+		FROM delivery_taker dt
+		JOIN takers t ON dt.taker_id = t.id
+		LEFT JOIN attempts a ON a.attempted_by = t.id AND a.delivery_id = dt.delivery_id
+		WHERE dt.delivery_id = $1
+		ORDER BY t.name ASC
 		LIMIT $2 OFFSET $3`
 
-	type AttemptWithTaker struct {
-		tables.Attempt
+	type ParticipantWithAttempt struct {
+		TakerID      int            `db:"taker_id"`
 		TakerName    string         `db:"taker_name"`
 		TakerRegNull sql.NullString `db:"taker_reg"`
+		TakerEmail   sql.NullString `db:"taker_email"`
+		// Attempt fields (nullable since participant might not have an attempt)
+		ID            sql.NullInt64  `db:"id"`
+		AttemptedBy   sql.NullInt64  `db:"attempted_by"`
+		ExamID        sql.NullInt64  `db:"exam_id"`
+		DeliveryID    sql.NullInt64  `db:"delivery_id"`
+		IPAddress     sql.NullString `db:"ip_address"`
+		StartedAt     sql.NullTime   `db:"started_at"`
+		EndedAt       sql.NullTime   `db:"ended_at"`
+		ExtraMinute   sql.NullInt64  `db:"extra_minute"`
+		Score         sql.NullFloat64 `db:"score"`
+		Progress      sql.NullInt64  `db:"progress"`
+		Penalty       sql.NullFloat64 `db:"penalty"`
+		CreatedAt     sql.NullTime   `db:"created_at"`
+		UpdatedAt     sql.NullTime   `db:"updated_at"`
+		FinishScoring sql.NullBool   `db:"finish_scoring"`
 	}
 
-	rawAttempts := []AttemptWithTaker{}
-	err = r.db.Select(&rawAttempts, query, deliveryID, pagination.PerPage, offset)
+	rawParticipants := []ParticipantWithAttempt{}
+	err = r.db.Select(&rawParticipants, query, deliveryID, pagination.PerPage, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get delivery attempts: %w", err)
 	}
 
 	// Transform to format expected by frontend
-	attempts := make([]map[string]interface{}, len(rawAttempts))
-	for i, attempt := range rawAttempts {
+	attempts := make([]map[string]interface{}, len(rawParticipants))
+	for i, participant := range rawParticipants {
 		takerReg := ""
-		if attempt.TakerRegNull.Valid {
-			takerReg = attempt.TakerRegNull.String
+		if participant.TakerRegNull.Valid {
+			takerReg = participant.TakerRegNull.String
+		}
+		
+		takerEmail := ""
+		if participant.TakerEmail.Valid {
+			takerEmail = participant.TakerEmail.String
 		}
 
-		attempts[i] = map[string]interface{}{
-			"id":             attempt.ID,
-			"attempted_by":   attempt.AttemptedBy,
-			"exam_id":        attempt.ExamID,
-			"delivery_id":    attempt.DeliveryID,
-			"ip_address":     attempt.IPAddress,
-			"started_at":     attempt.StartedAt,
-			"ended_at":       attempt.EndedAt,
-			"extra_minute":   attempt.ExtraMinute,
-			"score":          attempt.Score,
-			"progress":       attempt.Progress,
-			"penalty":        attempt.Penalty,
-			"created_at":     attempt.CreatedAt,
-			"updated_at":     attempt.UpdatedAt,
-			"finish_scoring": attempt.FinishScoring,
+		// Build the response structure
+		result := map[string]interface{}{
 			"taker": map[string]interface{}{
-				"name": attempt.TakerName,
-				"code": takerReg,
+				"id":    participant.TakerID,
+				"name":  participant.TakerName,
+				"code":  takerReg,
+				"email": takerEmail,
 			},
 		}
+
+		// If participant has an attempt, include attempt data
+		if participant.ID.Valid {
+			result["id"] = participant.ID.Int64
+			result["attempted_by"] = participant.AttemptedBy.Int64
+			result["exam_id"] = participant.ExamID.Int64
+			result["delivery_id"] = participant.DeliveryID.Int64
+			
+			if participant.IPAddress.Valid {
+				result["ip_address"] = participant.IPAddress.String
+			}
+			if participant.StartedAt.Valid {
+				result["started_at"] = participant.StartedAt.Time
+			}
+			if participant.EndedAt.Valid {
+				result["ended_at"] = participant.EndedAt.Time
+			}
+			if participant.ExtraMinute.Valid {
+				result["extra_minute"] = participant.ExtraMinute.Int64
+			}
+			if participant.Score.Valid {
+				result["score"] = participant.Score.Float64
+			}
+			if participant.Progress.Valid {
+				result["progress"] = participant.Progress.Int64
+			}
+			if participant.Penalty.Valid {
+				result["penalty"] = participant.Penalty.Float64
+			}
+			if participant.CreatedAt.Valid {
+				result["created_at"] = participant.CreatedAt.Time
+			}
+			if participant.UpdatedAt.Valid {
+				result["updated_at"] = participant.UpdatedAt.Time
+			}
+			if participant.FinishScoring.Valid {
+				result["finish_scoring"] = participant.FinishScoring.Bool
+			}
+		} else {
+			// Participant has no attempt yet, set default values
+			result["id"] = nil
+			result["attempted_by"] = participant.TakerID
+			result["exam_id"] = nil
+			result["delivery_id"] = deliveryID
+			result["started_at"] = nil
+			result["ended_at"] = nil
+			result["score"] = nil
+			result["progress"] = 0
+		}
+
+		attempts[i] = result
 	}
 
 	totalPages := (total + pagination.PerPage - 1) / pagination.PerPage
