@@ -21,7 +21,8 @@ interface User {
   email: string
 }
 
-interface UserWithRole extends User {
+interface UserWithRole {
+  user: User
   assigned_at: string
   is_active: boolean
 }
@@ -219,14 +220,14 @@ export function DeliveryAssignments({ deliveryId }: DeliveryAssignmentsProps) {
           ) : (
             <div className="space-y-3">
               {assignments.committee.map((member) => (
-                <div key={member.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <div key={member.user?.id || Math.random()} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                       <UserCheck className="w-4 h-4 text-blue-600" />
                     </div>
                     <div>
-                      <div className="font-medium">{member.name}</div>
-                      <div className="text-sm text-gray-600">@{member.username}</div>
+                      <div className="font-medium">{member.user?.name || member.name || 'Unknown'}</div>
+                      <div className="text-sm text-gray-600">@{member.user?.username || member.username || 'unknown'}</div>
                     </div>
                   </div>
                   <div className="text-right">
@@ -310,14 +311,14 @@ export function DeliveryAssignments({ deliveryId }: DeliveryAssignmentsProps) {
           ) : (
             <div className="space-y-3">
               {assignments.scorers.map((scorer) => (
-                <div key={scorer.id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                <div key={scorer.user?.id || Math.random()} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                       <CheckCircle className="w-4 h-4 text-green-600" />
                     </div>
                     <div>
-                      <div className="font-medium">{scorer.name}</div>
-                      <div className="text-sm text-gray-600">@{scorer.username}</div>
+                      <div className="font-medium">{scorer.user?.name || scorer.name || 'Unknown'}</div>
+                      <div className="text-sm text-gray-600">@{scorer.user?.username || scorer.username || 'unknown'}</div>
                     </div>
                   </div>
                   <div className="text-right">
